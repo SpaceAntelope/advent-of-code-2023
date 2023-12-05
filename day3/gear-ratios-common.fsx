@@ -30,7 +30,7 @@ let numFromPoint(point: int*int) (table: char array2d) =
     Regex.Matches(strRow, "\\d+")
     |> Seq.cast<Match>
     |> Seq.tryFind (fun m -> m.Index <= col && col <= (m.Index + m.Length - 1) )
-    |> Option.map (fun m -> m.Index, m.Value)
+    |> Option.map (fun m -> (row, m.Index), m.Value)
 
 let components (table: char array2d) =
     let rowCount = table |> Array2D.length1
@@ -47,10 +47,21 @@ let components (table: char array2d) =
                     |> List.distinct                    
     ] |> List.distinct |> List.map (snd>>Convert.ToInt32)
 
-File.ReadAllLines("./puzzle.input")
-|> Array.take 1
-|> fun x -> String.Join('\n',x)
-|> parse
-|> components
-// |> List.sum
-|> printfn "%A"
+let gearRatios (table: char array2d) =
+    let rowCount = table |> Array2D.length1
+    let colCount = table |> Array2D.length2
+    
+    [
+        for row in 0..rowCount-1 do
+            for col in 0..colCount-1 do
+                if isSymbol table[row,col] 
+                then
+                    let neighbors  =
+                        area row col
+                        |> List.where (fun (row,col) -> row >= 0 && col >= 0 && row < rowCount && col < colCount && isNumber table[row,col] )
+                        |> List.choose (fun (row,col) -> numFromPoint (row,col) table)                    
+                        |> List.distinct
+                        |> List.map (snd>>Convert.ToInt32)
+                    if neighbors.Length = 2                   
+                    then yield (neighbors[0] * neighbors[1])
+    ] 

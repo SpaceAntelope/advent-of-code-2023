@@ -1,8 +1,7 @@
-#load "./gear-ratios.fsx" 
+#load "./gear-ratios-common.fsx" 
 
 open System
-open ``Gear-ratios``
-open System.Text.RegularExpressions
+open ``Gear-ratios-common``
 
 let testData = @"467..114..
 ...*......
@@ -28,11 +27,13 @@ table
 |> Array2D.mapi (fun row  col z -> if (area22 |> List.contains (row,col)) then "💕" else (string z)) 
 |> printfn "\n%A"
 
-
 let actualComponents = components table |> List.sort
 let actualSum = actualComponents |> List.sum
-if actualComponents <> expectedComponents then failwith $"Expected {expectedComponents} but got {actualComponents}"
-if actualSum <> expectedSum then failwith $"Expected {expectedSum} but got {actualSum}"
+if actualComponents <> expectedComponents then failwith $"Components: Expected {expectedComponents} but got {actualComponents}"
+if actualSum <> expectedSum then failwith $"Component sum: Expected {expectedSum} but got {actualSum}"
 
     
-    
+let expectedTotalGearRatio = 467835
+let actualTotalGearRatio = gearRatios table |> List.sum
+
+if expectedTotalGearRatio <> actualTotalGearRatio then failwith $"Gear ratio: Expected {expectedTotalGearRatio} but got {actualTotalGearRatio}"
