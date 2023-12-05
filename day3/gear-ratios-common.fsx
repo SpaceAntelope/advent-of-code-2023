@@ -1,5 +1,4 @@
 open System
-open System.IO
 open System.Text.RegularExpressions
 
 let parse (str: string) = 
