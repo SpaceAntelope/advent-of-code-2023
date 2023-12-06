@@ -12,4 +12,9 @@ Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
 $expected = 13
 $actual = calculate $testData | Measure-Object Points -sum | ForEach-Object sum
 
-if ($expected -ne $actual) { throw "Expected $expected but got $actual" } else { "Point caluclation test passed" }
+if ($expected -ne $actual) { throw "Expected $expected but got $actual" } else { "Point calculation test passed" }
+
+$expectedCardTotal = 30
+$actualCardTotal = calculateAccumulatedCards $testData
+
+if ($expectedCardTotal -ne $actualCardTotal) { throw "Expected $expectedCardTotal but got $actualCardTotal" } else { "Card accumulation test passed" }
