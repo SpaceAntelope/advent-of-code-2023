@@ -36,15 +36,17 @@ function getTarget($source, [array]$mapEntries) {
     else {
         $source
     }
-
-
 }
 
 $supplyChain = "seed-to-soil", "soil-to-fertilizer", "fertilizer-to-water", "water-to-light", "light-to-temperature", "temperature-to-humidity", "humidity-to-location"
 
 function fromSeedToLocation($seed, $index) {
     
-    $supplyChain | ForEach-Object { $source = $seed } { $source = getTarget $source $index[$_] } { $source }
+    $supplyChain 
+    | ForEach-Object `
+        { $source = $seed } `
+        { $source = getTarget $source $index[$_] } `
+        { $source }
 }
 
 function parseSeedRanges($seeds) {

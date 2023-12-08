@@ -70,3 +70,22 @@ if ($expectedLowestLocationNumber -ne $actualLowestLocationNumber) {
     throw "Expected [$expectedLowestLocationNumber] but got [$actualLowestLocationNumber]"
 }
 else { write-host -f green "Extended seed range lowest location finding passed" }
+
+
+$expectedLowestLocationNumber = 46
+$actualLowestLocationNumber = parseSeedRanges $index["seeds"] 
+| ForEach-Object { 
+    $start, $range = $_    
+    $stop = $start + $range - 1
+
+    [math]::min((fromSeedToLocation $start $index), (fromSeedToLocation $stop $index))
+    # apparently ps range operator (..) only works with int32, go figure
+    # for ($i = $start; $i -lt $stop; $i++) { $i }
+} #-ThrottleLimit $env:NUMBER_OF_PROCESSORS
+| Measure-Object -min
+| ForEach-Object Minimum
+
+if ($expectedLowestLocationNumber -ne $actualLowestLocationNumber) {
+    throw "Expected [$expectedLowestLocationNumber] but got [$actualLowestLocationNumber]"
+}
+else { write-host -f green "Extended seed range lowest location finding passed" }
