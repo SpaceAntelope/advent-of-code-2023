@@ -56,3 +56,7 @@ function parseSeedRanges($seeds) {
         -process { if ($chunk.length -eq 2) { , $chunk; $chunk = @($_) } else { $chunk += $_ } } `
         -end { , $chunk } 
 }
+
+function search($range, $index) {
+    
+}

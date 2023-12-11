@@ -56,7 +56,7 @@ if ($expectedLowestLocationNumber -ne $actualLowestLocationNumber) {
 }
 else { write-host -f green "Lowest location finding passed" }
 
-# test 3
+# test 3 - brute force
 $expectedLowestLocationNumber = 46
 $actualLowestLocationNumber = parseSeedRanges $index["seeds"] 
 | ForEach-Object { 
@@ -72,6 +72,7 @@ if ($expectedLowestLocationNumber -ne $actualLowestLocationNumber) {
 else { write-host -f green "Extended seed range lowest location finding passed" }
 
 
+# test 3 - the smart way
 $expectedLowestLocationNumber = 46
 $actualLowestLocationNumber = parseSeedRanges $index["seeds"] 
 | ForEach-Object { 
