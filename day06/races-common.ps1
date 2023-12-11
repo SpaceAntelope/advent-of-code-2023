@@ -12,7 +12,6 @@ function parse($data) {
 
 
 function parse2($data) {
-    write-host $data
     $time, $distance = $data -split "`n" | ForEach-Object { $_ -replace "\D" } | ForEach-Object { [convert]::ToDouble($_) }
     [pscustomobject]@{
         Time = $time
@@ -39,6 +38,5 @@ function quadraticSolve($race) {
     $lowerBound = (isInt $bounds[0]) ? $bounds[0] + 1 : [math]::Ceiling($bounds[0])
     $higherBound = (isInt $bounds[1]) ? $bounds[1] - 1 : [math]::Floor($bounds[1])
 
-    write-host "Bounds: $bounds $lowerBound $higherBound"
     [math]::Abs($higherBound - $lowerBound ) + 1 # plus one because solution should be left side inclusive
 }    
