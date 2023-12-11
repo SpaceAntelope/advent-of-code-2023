@@ -10,6 +10,7 @@ function parse($data) {
     }
 }
 
+# brute force a solution
 function findTimeBF($race) {    
     $minSpeed = [math]::Ceiling($race.Distance / $race.Time)
 
@@ -23,8 +24,11 @@ function qf($time, $distance, [double]$plusOrMinus = 1.0) {
     ((-$time + $plusOrMinus * [math]::sqrt([math]::pow($time, 2.0) - 4.0 * $distance)) / -2.0)
 }
 function quadraticSolve($race) {
-    $bounds = (qf $race.time $race.distance 1.0), (qf $race.time $race.distance -1.0) | % { (isInt $_) ? $_ + 1 : [math]::Ceiling($_) }
+    $bounds = (qf $race.time $race.distance 1.0), (qf $race.time $race.distance -1.0) | Sort-Object # % { write-host $_; (isInt $_) ? $_ + 1 : [math]::Ceiling($_) }
 
-    write-host "Bounds: $bounds"
-    [math]::Abs($bounds[1] - $bounds[0])
+    $lowerBound = (isInt $bounds[0]) ? $bounds[0] + 1 : [math]::Ceiling($bounds[0])
+    $higherBound = (isInt $bounds[1]) ? $bounds[1] - 1 : [math]::Floor($bounds[1])
+
+    write-host "Bounds: $bounds $lowerBound $higherBound"
+    [math]::Abs($higherBound - $lowerBound)
 }    
