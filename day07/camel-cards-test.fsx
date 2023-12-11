@@ -1,16 +1,8 @@
+#load "./camel-cards-common.fsx"
+
 open System
 open System.Text.RegularExpressions
-
-type Hand = {
-    Hand : string
-    Bet: int64
-} with static Parse (data: string) =
-        data.Split('\n', StringSplitOptions.RemoveEmptyEntries ||| StringSplitOptions.TrimEntries)
-        |> Array.map (fun str -> Regex.Split(str,"\\s+"))
-        |> Array.map (fun arr -> {
-            Hand = arr.[0]
-            Bet = Convert.ToInt64 arr.[1]
-        })
+open ``Camel-cards-common``
 
 let testdata = @"
     32T3K 765
@@ -19,56 +11,44 @@ let testdata = @"
     KTJJT 220
     QQQJA 483"
 
-let suite = "AKQJT98765432" //.ToCharArray() 
-
-// let (|Five|Four|Full|Three|TwoPair|OnePair|High|) (hand: string)= 
-let rankedHandIndex = [|
-    "Highest"
-    "TwoOfAKind"
-    "TwoPairs"
-    "ThreeOfAKind"
-    "FullHouse"
-    "FourOfAKind"
-    "FiveOfAKind"
-|]
-
-let rankHandByType (hand: Hand) =
-    hand.Hand.ToCharArray() 
-    |> List.ofArray
-    |> List.countBy id
-    |> List.map snd
-    |> List.sortDescending
-    |> function
-    | count::_ when count = 5  -> 7
-    | count::_ when count = 4  -> 6
-    | x::y::_ when x = 3 && y = 2 -> 5
-    | count::_ when count = 3  -> 4
-    | x::y::_ when x = 2 && y = 2 -> 3
-    | count::_ when count = 2  -> 2
-    | _ -> 1
-
-let rankCard (card : char)=
-    suite.Length - suite.IndexOf(card)
+// Test rankings
+testdata 
+|> Hand.Parse 
+|> Array.map rankHandByType 
+|> Array.map (fun x -> rankedHandIndex[x-1])        
+|> printfn "%A"
 
 testdata 
 |> Hand.Parse 
 |> Array.map rankHandByType 
 |> Array.map (fun x -> rankedHandIndex[x-1])        
 |> printfn "%A"
+
         
 suite.ToCharArray() |> Array.map rankCard |> printfn "%A"
 
-let compareHands (x : Hand) (y: Hand) = 
-    let typeX = rankHandByType x
-    let typeY = rankHandByType y
 
-    match typeX.CompareTo(typeY) with
-    | 0 ->     
-        Array.zip (x.Hand.ToCharArray()) (y.Hand.ToCharArray())
-        |> Array.map (fun (c1,c2) -> (rankCard c1), (rankCard c2))
-        |> Array.tryFind (fun (r1,r2) -> r1 <> r2)
-        |> function 
-        | Some (r1,r2) -> r1.CompareTo(r2)
-        | None -> 0
-    | result -> result
- 
+// Test bid calculation
+let expected = 6440L
+
+testdata
+|> Hand.Parse
+|> Array.sortWith handsComparer
+|> Array.mapi (fun i hand -> hand.Bet * (int64 i+1L))
+|> Array.sum
+|> function
+| x when x = expected  -> printfn "Calculate winnings passed."
+| actual -> printfn $"Expected {expected} but got {actual}"
+
+// Joker in play
+open ``Camel-cards-common``.Joker
+let expected2 = 5905L
+testdata
+|> Hand.Parse
+|> Array.map applyJoker
+|> Array.sortWith handsComparer
+|> Array.mapi (fun i hand -> hand.Bet * (int64 i+1L))
+|> Array.sum
+|> function
+| x when x = expected2  -> printfn "Calculate winnings with jokers in play passed."
+| actual -> printfn $"Expected {expected2} but got {actual}"
