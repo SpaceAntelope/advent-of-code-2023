@@ -43,3 +43,29 @@ parse testData2
 |> function 
 | steps when steps = expected2 -> printfn "Passed 6 step search"
 | actual -> failwith $"Expected {expected2} steps but got {actual}"
+
+let testData3= @"
+LR
+
+11A = (11B, XXX)
+11B = (XXX, 11Z)
+11Z = (11B, XXX)
+22A = (22B, XXX)
+22B = (22C, 22C)
+22C = (22Z, 22Z)
+22Z = (22B, 22B)
+XXX = (XXX, XXX)"
+
+let expected3 = 6
+let instr, map2 = 
+    parse testData3
+let startingKeys = 
+    map2.Keys 
+    |> Seq.filter _.EndsWith('A') 
+    |> Array.ofSeq
+
+// printfn "%A" map2
+search2 0 startingKeys instr map2
+|> function 
+| steps when steps = expected3 -> printfn "Passed parallel search test"
+| actual -> failwith $"Expected {expected3} steps but got {actual}"
