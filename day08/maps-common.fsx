@@ -1,6 +1,7 @@
 open System
 open System.IO
 open System.Text.RegularExpressions
+open System.Collections.Generic
 
 let parse (data: string) =
     let instructions = Regex.Match(data.Trim(), "^[RL]+").Value
@@ -11,12 +12,12 @@ let parse (data: string) =
         |> Array.map (fun line ->
             let patterns = Regex.Matches(line, "\\w{3}") |> Seq.map _.Value |> Array.ofSeq
             patterns.[0], (patterns.[1], patterns.[2]))
-        |> Map.ofArray
+        |> readOnlyDict
 
     instructions.ToCharArray(), map
 
 [<TailCall>]
-let rec search (steps: int) (currentKey: string) (instructions: char[]) (map: Map<string, string * string>) =
+let rec search (steps: int) (currentKey: string) (instructions: char[]) (map: IReadOnlyDictionary<string, string * string>) =
     let instructionIndex = steps % instructions.Length
     let (L, R) = map.[currentKey]
 
@@ -29,7 +30,7 @@ let rec search (steps: int) (currentKey: string) (instructions: char[]) (map: Ma
 
 
 
-let search2 (steps: int) (currentKeys: string[]) (instructions: char[]) (map: Map<string, string * string>) =
+let search2 (steps: int) (currentKeys: string[]) (instructions: char[]) (map: IReadOnlyDictionary<string, string * string>) =
     
     // [<TailCall>]
     let rec internalSearch (steps: int64) (keys: string array) = 
@@ -53,17 +54,25 @@ let search2 (steps: int) (currentKeys: string[]) (instructions: char[]) (map: Ma
     internalSearch 0L currentKeys
 
 
-// let search3 (instructions: char[]) (map: Map<string, string * string>) =
+let search3 (steps: int) (currentKeys: string[]) (instructions: char[]) (map: IReadOnlyDictionary<string, string * string>) =
     
-//     let rec internalSearch (steps: int) (currentKey: string)  =
-//         let instructionIndex = steps % instructions.Length
-//         let instruction = instructions.[instructionIndex]
+    // [<TailCall>]
+    let rec internalSearch (steps: int) (key: string ) = 
+        if steps % 1000000 = 0 then printfn $"Currently on step {steps}"
         
-//         let (L, R) = map.[currentKey]
+        let instructionIndex  = int32 (steps % instructions.Length)
+        let instruction = instructions.[instructionIndex]
 
-//         match instruction with
-//         | 'L' when L.EndsWith('Z') -> steps + 1
-//         | 'R' when R.EndsWith('Z') -> steps + 1
-//         | 'L' -> internalSearch (steps + 1) L 
-//         | 'R' -> internalSearch (steps + 1) R 
-//         | x -> failwith $"Unknown instruction {x}"
+        let nextKey = 
+            match instruction with 
+            | 'L' -> fst map.[key] 
+            | 'R' -> snd map.[key] 
+            | _ -> failwith $"Invalid instruction {instruction}"
+        
+        if nextKey.EndsWith('Z') 
+        then steps + 1
+        else internalSearch (steps + 1) nextKey
+        
+
+    
+    internalSearch 0L currentKeys
