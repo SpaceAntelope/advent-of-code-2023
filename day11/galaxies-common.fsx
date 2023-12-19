@@ -75,17 +75,24 @@ let manhattanDistance (src: int*int) (dst: int*int) =
     Math.Abs(row2-row1) + Math.Abs(col2-col1)        
 
 let expandedManhattanDistance (src: int*int) (dst: int*int) (emptyLineIndices: int[]) (emptyColIndices: int[]) (expansionFactor: int)=
-    let row1,col1 = src
+    let row1, col1 = src
     let row2, col2 = dst
 
-    let minRow,maxRow = if row1 > row2 then row2,row1 else row1,row2
+    let minRow, maxRow = if row1 > row2 then row2,row1 else row1,row2
     let minCol, maxCol = if col1 > col2 then col2,col1 else col1,col2
-    let horizontalExpansion = emptyLineIndices |> Array.filter (fun i -> i > minRow && i < maxRow ) |> Array.length |> fun ln -> ln * expansionFactor
-    let verticalExpansion = emptyColIndices |> Array.filter (fun i -> i > minCol && i < maxCol ) |> Array.length |> fun ln -> ln * expansionFactor
-    let hDist = maxRow - minRow + horizontalExpansion
-    let vDist = maxCol - minCol + verticalExpansion
+    let emptyRowCount = 
+        emptyLineIndices 
+        |> Array.filter (fun i -> i > minRow && i < maxRow ) 
+        |> Array.length 
+    let emptyColCount = 
+        emptyColIndices 
+        |> Array.filter (fun i -> i > minCol && i < maxCol ) 
+        |> Array.length 
+                
+    let verticalDistance = maxRow - minRow + emptyRowCount * expansionFactor - emptyRowCount
+    let horizontalDistance = maxCol - minCol + emptyColCount * expansionFactor - emptyColCount
     
-    hDist + vDist
+    verticalDistance + horizontalDistance
 
 let numberedPoints (table: char array2d) = 
     table
@@ -97,14 +104,14 @@ let numberedPoints (table: char array2d) =
     |> Seq.map(fun (r,c,v) -> int v, (r,c))
     |> readOnlyDict
 
-let emptyLines (table: char array2d) =
+let emptyRows (table: char array2d) =
     let rowCount = table |> Array2D.length1
     [|0..rowCount-1|]
     |> Array.map (fun rowIndex -> rowIndex, table[rowIndex,*])        
     |> Array.filter (snd>>(Array.forall (fun x -> x = '.')))
     |> Array.map fst 
 
-let emptyCols (table: char array2d) =
+let emptyColumns (table: char array2d) =
     let colCount = table |> Array2D.length2
     [|0..colCount-1|]
     |> Array.map (fun colIndex -> colIndex, table[*,colIndex])        

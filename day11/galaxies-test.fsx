@@ -105,3 +105,26 @@ let testSumOfDistances =
     |> function
     | actual when actual = expected -> printfn "Total distance test passed."
     | actual -> failwith $"Expected total distance {expected} but got {actual}"
+
+let testOlderSumOfDistances expected expansionFactor =     
+
+    let universe = 
+        testData
+        |> parse
+
+    let points = 
+        universe
+        |> numberedPoints
+
+    let emptyCols = emptyColumns universe
+    let emptyLines = emptyRows universe
+
+    points 
+    |> allDistancePairs
+    |> Seq.sumBy (fun (p1,p2) -> expandedManhattanDistance points[p1] points[p2] emptyLines emptyCols expansionFactor)
+    |> function
+    | actual when actual = expected -> printfn $"Total distance in {expansionFactor} x older universe test passed."
+    | actual -> failwith $"Expected total distance {expected} but got {actual}"
+
+testOlderSumOfDistances 1030 10
+testOlderSumOfDistances 8410 100
