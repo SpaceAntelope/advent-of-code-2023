@@ -1,20 +1,20 @@
 open System
 open System.Text.RegularExpressions
 
-type Condition = 
-    | Operational
-    | Damaged
-    | Unknown
-
+type Spring = {
+    Mask : string
+    CRC: int[]
+}
 
 let parse (data:string) =
     data.Split('\n', StringSplitOptions.RemoveEmptyEntries ||| StringSplitOptions.TrimEntries)
     |> Array.map (fun line -> 
         let parts = line.Split(' ')
-        {| Springs = parts.[0].ToCharArray() |> Array.map (function '.' -> Operational | '#' -> Damaged | _ -> Unknown)
-           Source = parts.[0].ToCharArray()
-           CRC = parts.[1].Split(',') |> Array.map int |}
+        { //Springs = parts.[0].ToCharArray() |> Array.map (function '.' -> Operational | '#' -> Damaged | _ -> Unknown)
+           Mask = parts.[0]
+           CRC = parts.[1].Split(',') |> Array.map int }
         )
+        //parts.[0],parts.[1].Split(',') |> Array.map int)
 
 let validatebyCRC (crc: int[]) (springs: string) = 
     Regex.Matches(springs, "#+")
@@ -50,9 +50,10 @@ let generateArrangementFromIslandIndices (indices: int seq) (crc :int[]) (maskLe
  *)
 let permutations(mask: string) (crc: int[]) =
     let totalIslandCount = crc.Length
-    let validateByMask start length = 
-        printfn "total %d start %d length %d" mask.Length start length
-        mask.Substring(start, length).ToCharArray() |> Array.forall (fun c -> c <> '.')
+    let validateByPartialMask start length = 
+        // printfn "total %d start %d length %d" mask.Length start length
+        start + length <= mask.Length        
+        && mask.Substring(start, length).ToCharArray() |> Array.forall (fun c -> c <> '.')
         && (start = 0 || mask.Chars(start-1) <> '#')
         && (start + length = mask.Length || mask.Chars(start+length) <> '#' )
 
@@ -60,18 +61,37 @@ let permutations(mask: string) (crc: int[]) =
         seq {      
             let placedIslandsCount = islandIndices.Length
 
+            // generateArrangementFromIslandIndices islandIndices crc mask.Length
+            // |> printfn "Depth: %d Min: %d Progress: %A" placedIslandsCount minIndex
+
             if placedIslandsCount = totalIslandCount 
-            then yield generateArrangementFromIslandIndices islandIndices crc mask.Length
+            then 
+                let arrangement = generateArrangementFromIslandIndices islandIndices crc mask.Length
+                if validateByMask mask arrangement
+                then 
+                    // printfn "Yielding %A" arrangement
+                    yield arrangement
             else
                 let currentIslandLength = crc[placedIslandsCount]
                 let minDotsNeededToSeparateRemainingIslandsFromEachOther = totalIslandCount - placedIslandsCount - 1 // including current island
                 let remainingIslandsLength = crc |> Array.skip (placedIslandsCount+1) |> Array.sum // not including current island
                 let maxIndexForCurrentIsland = mask.Length - minDotsNeededToSeparateRemainingIslandsFromEachOther - remainingIslandsLength - 1
+                // printfn $"{mask.Length} - {minDotsNeededToSeparateRemainingIslandsFromEachOther} - {remainingIslandsLength} - 1"
+                // printf "%s" <| "".PadLeft(placedIslandsCount)
+                // printf "Depth: %d Min: %d Max: %d " placedIslandsCount minIndex maxIndexForCurrentIsland
                 for currentIslandIndex in minIndex..maxIndexForCurrentIsland do
-                    if validateByMask currentIslandIndex currentIslandLength
+                    // printf "%s" <| "".PadLeft(placedIslandsCount)
+                    // printfn "Current: %d" currentIslandIndex
+    
+                    if validateByPartialMask currentIslandIndex currentIslandLength
                     then
                         let minIndexForNextIsland = currentIslandIndex + currentIslandLength + 1                            
                         yield! search minIndexForNextIsland (islandIndices@[currentIslandIndex])
+                    // else printfn "Mask validation failed"
         }
 
     search 0 []
+
+let unfold (spring: Spring) =
+    { Mask = Array.create 5 spring.Mask |> Array.reduce (sprintf "%s?%s")
+      CRC = Array.replicate 5 spring.CRC |> Array.collect id }

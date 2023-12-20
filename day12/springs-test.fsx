@@ -13,22 +13,6 @@ let testData = @"
 ?###???????? 3,2,1"
 
 
-
-
-
-// let permutations(mask: string) (crc: int[]) =
-//     let maxDots = mask.Length - Array.sum crc
-//     let dotIslandCount = crc.Length + 2 //max depth. first and last island can have zero length
-    
-//     let rec search (min:int) (max:int) (islands: int list) = 
-//         let dotsUsed = islands |> List.sum
-//         let remainingIslands = 
-//         let dotsNedeedToSeparateRemainingIslands = crc.Length - 1 - (depth - 1)
-//         for i in [min..max] do 
-//             search min (maxDots - dotsUsed - dotsNedeedToSeparateRemainingIslands) (depth+1) (dotsUsed + i)
-
-//     search 0 (maxDots - )
-
 let testValidation =
     let test mask crc spring  = 
         if validatebyCRC crc spring 
@@ -95,7 +79,52 @@ let testPermutations =
         let parts = line.Split(' ')
         parts[0], parts[1].Split(',') |> Array.map int, int parts[3])
     |> Array.iter (fun (mask, crc, expected) -> 
-        printfn $"{mask} %A{crc} {expected}"
         match permutations mask crc with
-        | actual when actual |> Seq.length = expected -> printfn $"Passed arrangement count test for {mask}. Arrangements were %A{actual}"
-        | actual -> failwith $"Arrangement count test failed: expected {expected} but got {actual |> Seq.length}" )
+        | actual when expected = Seq.length actual -> printfn $"Passed arrangement count test for {mask}. Found {expected} arrangements: %A{actual}"
+        | actual -> failwith $"Arrangement count test for %A{mask} failed: expected {expected} but got {actual |> Seq.length}" )
+
+let testPermutationCountTotal = 
+    let expected = 21
+    @"???.### 1,1,3
+.??..??...?##. 1,1,3
+?#?#?#?#?#?#?#? 1,3,1,6
+????.#...#... 4,1,1
+????.######..#####. 1,6,5
+?###???????? 3,2,1"
+    |> parse
+    |> Array.map (fun spring -> 
+        permutations spring.Mask spring.CRC)
+    |> Array.sumBy Seq.length
+    |> function
+    | actual when expected = actual -> printfn "Permutation count for dataset test passed."
+    | actual -> printfn $"Permutation count for dataset test failed. Expected {expected} but fot {actual}."
+
+let testUnfoldedPermutations =
+    let expectedTotal = 525152L
+    
+    @"???.### 1,1,3 - 1 arrangement
+.??..??...?##. 1,1,3 - 16384 arrangements
+?#?#?#?#?#?#?#? 1,3,1,6 - 1 arrangement
+????.#...#... 4,1,1 - 16 arrangements
+????.######..#####. 1,6,5 - 2500 arrangements
+?###???????? 3,2,1 - 506250 arrangements".Split('\n')
+    |> Array.map (fun line -> 
+        let parts = line.Split(' ') |> Array.map _.Trim()
+        { Mask = parts[0]; CRC = parts[1].Split(',') |> Array.map int }, 
+        int <| parts[3].Split(' ')[0])
+    |> Array.map (fun (spring, expected) -> 
+        let unfolded = unfold spring
+        let arrangements = permutations unfolded.Mask unfolded.CRC |> Array.ofSeq
+        match arrangements with
+        | actual when expected = actual.Length -> printfn $"Passed unfolded arrangement count test for %A{unfolded}."; actual.LongLength
+        | actual -> failwith $"Unfolded arrangement count test for %A{unfolded} failed: expected {expected} but got {actual.Length}" )
+    |> Array.sum
+    |> function
+    | actual when actual = expectedTotal -> printfn "Unfolded arrangement total count passed"
+    | actual -> printfn $"Unfolded arrangement total count failed: Expected {expectedTotal} but got {actual}"
+
+
+// let testEdgeCase = 
+//     { Mask = "????.??.??.???"; CRC = [|1;2|]
+    
+//     }    
