@@ -111,13 +111,13 @@ let testUnfoldedPermutations =
     |> Array.map (fun line -> 
         let parts = line.Split(' ') |> Array.map _.Trim()
         { Mask = parts[0]; CRC = parts[1].Split(',') |> Array.map int }, 
-        int <| parts[3].Split(' ')[0])
+        int64 <| parts[3].Split(' ')[0])
     |> Array.map (fun (spring, expected) -> 
         let unfolded = unfold spring
-        let arrangements = permutations unfolded.Mask unfolded.CRC |> Array.ofSeq
+        let arrangements = permutationsCount unfolded.Mask unfolded.CRC
         match arrangements with
-        | actual when expected = actual.Length -> printfn $"Passed unfolded arrangement count test for %A{unfolded}."; actual.LongLength
-        | actual -> failwith $"Unfolded arrangement count test for %A{unfolded} failed: expected {expected} but got {actual.Length}" )
+        | actual when expected = actual -> printfn $"Passed unfolded arrangement count test for %A{unfolded}."; actual
+        | actual -> failwith $"Unfolded arrangement count test for %A{unfolded} failed: expected {expected} but got {actual}" )
     |> Array.sum
     |> function
     | actual when actual = expectedTotal -> printfn "Unfolded arrangement total count passed"

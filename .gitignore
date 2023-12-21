@@ -1,3 +1,5 @@
 .config/dotnet-tools.json
 puzzle.input
 .fake
+obj
+bin
