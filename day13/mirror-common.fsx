@@ -1,11 +1,5 @@
 open System
 
-let invert (table: 'a array2d) = 
-    let rowCount = table |> Array2D.length1
-    let colCount = table |> Array2D.length2
-    Array2D.init colCount rowCount (fun row col -> table[col,row])
-
-
 let parse (data:string) =
     data.Split('\n', StringSplitOptions.RemoveEmptyEntries ||| StringSplitOptions.TrimEntries)
     |> Array.map _.ToCharArray()
@@ -16,6 +10,7 @@ let reverseColumns (table: 'a array2d) =
     let colCount = table |> Array2D.length2
 
     Array2D.init rowCount colCount (fun row col -> table[row,^col])
+
 let reverseRows (table: 'a array2d) =
     let rowCount = table |> Array2D.length1
     let colCount = table |> Array2D.length2
@@ -36,8 +31,6 @@ let colSymAt c1 c2 (table: 'a array2d) =
          || table[*, c1-(colCount-c2-1)..c1] = (reverseColumns table[*,c2..]))             
 
 let symScore (table: char array2d) =
-    // printfn "%A" table
-    
     let rowCount = table |> Array2D.length1
     let colCount = table |> Array2D.length2
 
@@ -63,4 +56,9 @@ let symScore (table: char array2d) =
         | None -> 0
         
     vScore + hScore
+
+let differenceScore (x: string) (y: string) =
+    x.ToCharArray() 
+    |> Array.zip (y.ToCharArray()) 
+    |> Array.fold (fun state (x_n, y_n) -> if x_n <> y_n then state + 1 else state ) 0
 
