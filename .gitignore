@@ -6,3 +6,4 @@ bin
 *.fs
 *.fsproj
 output.txt
+.vs
