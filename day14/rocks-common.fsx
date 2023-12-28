@@ -59,7 +59,6 @@ let tiltNorth (table: char array2d) =
         else updatedValue)    
 
 let tiltInPlace  (direction: Dir) (table: char array2d) = 
-
     let rowCount = table |> Array2D.length1
     let colCount = table |> Array2D.length2
 
@@ -147,7 +146,10 @@ let rec indexOfMovableSouth (line: char[]) (index: int) =
     else indexOfMovableSouth line (index-1)
 
 
+
 let tilt (direction: Dir) (table: char array2d) =
+    raise <| NotImplementedException("Switched to in place replacement for simplicity")
+
     let pointNowDot = HashSet<int*int>()
     let pointNowRock =HashSet<int*int>()
     let updateCol (line : char[])  colIndex =
@@ -207,3 +209,15 @@ let score (table : char array2d) =
             row 
             |> Array.fold(fun state current -> if current = 'O' then state + weight else state) 0)
     |> List.sum
+
+let cycleInPlace = 
+    (tiltInPlace N)
+    >>(tiltInPlace W)
+    >>(tiltInPlace S)
+    >>(tiltInPlace E)
+
+
+let cycleGeneration (table: char array2d) =
+    Seq.initInfinite (fun i -> i, (cycleInPlace table), (score table))
+
+let str (table: char array2d) = table |> Seq.cast<char> |> Seq.map string |> Seq.reduce (+)

@@ -167,3 +167,78 @@ let testTiltByDirectionInPlace =
     testCases
     |> List.iter (fun (dir,table) -> test dir table |> ignore)
 
+
+
+
+
+let testCycling = 
+    let expected = [|
+        parse @".....#....
+....#...O#
+...OO##...
+.OO#......
+.....OOO#.
+.O#...O#.#
+....O#....
+......OOOO
+#...O###..
+#..OO#...."
+        parse @".....#....
+....#...O#
+.....##...
+..O#......
+.....OOO#.
+.O#...O#.#
+....O#...O
+.......OOO
+#..OO###..
+#.OOO#...O"
+        parse @".....#....
+....#...O#
+.....##...
+..O#......
+.....OOO#.
+.O#...O#.#
+....O#...O
+.......OOO
+#...O###.O
+#.OOO#...O"
+    |]
+
+    testData
+    |> parse
+    |> cycleInPlace
+    |> function 
+    | actual when actual = expected[0] -> printfn "Cycle 1 test passed"; actual
+    | actual -> failwith $"Cycle 1 test failed. Expected \n%A{expected[0]}\n but got \n%A{actual}"
+    |> cycleInPlace
+    |> function 
+    | actual when actual = expected[1] -> printfn "Cycle 2 test passed"; actual
+    | actual -> failwith $"Cycle 2 test failed. Expected \n%A{expected[1]}\n but got \n%A{actual}"
+    |> cycleInPlace
+    |> function 
+    | actual when actual = expected[2] -> printfn "Cycle 3 test passed"; actual
+    | actual -> failwith $"Cycle 3 test failed. Expected \n%A{expected[2]}\n but got \n%A{actual}"
+//let rotateOneBillionTimes = 
+
+
+testData
+|> parse
+|> str
+|> printfn "%s"
+
+let s = 
+    testData
+    |> parse
+    |> cycleGeneration 
+
+
+let findRepeatingPattern = 
+    let discovered = HashSet<string>()
+
+    s 
+    |> Seq.takeWhile (fun (i,tab,scr) -> 
+            discovered.Add(str tab)                )
+    |> Seq.last
+    |> printfn "%A"
+
