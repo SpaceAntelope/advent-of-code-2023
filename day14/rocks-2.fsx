@@ -46,4 +46,3 @@ history
 |> Seq.find (fun (i, scr, h) ->
     i = indexOfOneBillion + startOfPatternIndex)
 |> fun (i, scr, h) -> printfn "Score at 1bn should be %d" scr
-
