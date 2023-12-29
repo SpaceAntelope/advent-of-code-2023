@@ -42,7 +42,6 @@ let tripTheLight (startDir:Direction) (start: int*int) (table : Point array2d)  
         visited[current.Row,current.Col] <- '#'
         if followed.Add(current,dir) 
         then 
-            // printfn $"{msg}"
             match current.Val, dir with
             (* beam stops *)
             | SplitV, ToBottom when current.Row = rowCount - 1 -> onStop()
@@ -94,7 +93,7 @@ let tripTheLight (startDir:Direction) (start: int*int) (table : Point array2d)  
             | LeanLeft, ToLeft -> fantastick ToTop table[current.Row-1, current.Col]
             | LeanLeft, ToBottom -> fantastick ToRight table[current.Row, current.Col+1]
             | LeanLeft, ToTop -> fantastick ToLeft table[current.Row, current.Col-1]
-            (* probably need to make sure no cycles *)
+            
 
     fantastick startDir table[rowStart,colStart]
 
