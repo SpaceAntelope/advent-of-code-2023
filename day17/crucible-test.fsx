@@ -98,3 +98,19 @@ testData
 |> parse
 |> travel (Bottom,0,0) 
 |> printfn "%A"
+
+type token = { K: DateTimeOffset }
+
+let renewToken () = { K = DateTimeOffset.Now }
+let timeForRenewal (token: token) = token.K < DateTimeOffset.Now - TimeSpan.FromSeconds(10)
+
+let k (tokenData : token option) =
+    match tokenData with
+    | None
+    | Some token when timeForRenewal token -> renewToken () 
+    | Some token -> token
+
+let x y = 
+    match y with 
+    | 1 
+    | 1 when y = 3 -> printfn "T"
