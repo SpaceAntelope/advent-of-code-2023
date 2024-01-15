@@ -11,8 +11,8 @@ open ``Lagoon-common``
 |> path
 |> rebasePath
 |> trenchArea
-//|> fun table -> File.WriteAllText("table.html", html table); table
+|> fun table -> File.WriteAllText("table.html", html table); table
 |> fillTrench
-//|> fun table -> File.AppendAllText("table.html", html table); table
+|> fun table -> File.AppendAllText("table.html", html table); table
 |> fun table -> table |> Seq.cast<char> |> Seq.countBy id
 |> printfn "Trech holds %A m^3 of lava"

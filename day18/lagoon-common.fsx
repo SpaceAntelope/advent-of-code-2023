@@ -29,7 +29,7 @@ let path (instructions: Instruction[]) : Path  =
         [|1..instr.Steps|]
         |> Array.map (fun i -> 
                 match instr.Dir with
-                | D ->  (row+i, col)
+                | D -> (row+i, col)
                 | U -> (row-i, col)
                 | R -> (row, col+i)
                 | L -> (row, col-i))) [|(0,0)|]
@@ -134,6 +134,7 @@ let html (table: char array2d) =
 
             table, th, td {
                 border: 1px solid black;
+                border-spacing: 0;
             }
 
             td > * {
