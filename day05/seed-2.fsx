@@ -77,7 +77,7 @@ let minLocation path =
     let seeds, maps = parse path
     let seedToLocation = seedToLocationFactory maps
     seeds
-    |> Array.map (fun seed -> 
+    |> Array.Parallel.map (fun seed -> 
         let sw = Stopwatch()
         sw.Start()
         let result = seed.Seeds |> Seq.map seedToLocation |> Seq.min
