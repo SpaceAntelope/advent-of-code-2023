@@ -22,6 +22,15 @@ let parse (data: string) =
           Steps = int parts[1]
           Color = parts[2].Trim([| '('; ')'; '#' |]) })
 
+let parseExtended (data: Instruction ) =
+    {
+        Dir = 
+            match int <| data.Color.Chars(data.Color.Length-1).ToString() with
+            | 0 -> R | 1 -> D | 2 -> L | 3 -> U | x -> failwith $"Unknown direction {x}"
+        Color = String.Empty
+        Steps = Convert.ToInt32(data.Color.Substring(0,5), 16)
+    }
+
 let path (instructions: Instruction[]) : Path  =
     instructions
     |> Array.scan (fun state instr -> 
@@ -35,6 +44,16 @@ let path (instructions: Instruction[]) : Path  =
                 | L -> (row, col-i))) [|(0,0)|]
     |> Array.collect id
     |> Array.skip 1 // (0,0) appears both first and last
+
+let nodes (instructions : Instruction[]) : Path =
+    instructions
+    |> Array.scan (fun (row,col) instr -> 
+            match instr.Dir with
+            | D -> (row+instr.Steps, col)
+            | U -> (row-instr.Steps, col)
+            | R -> (row, col+instr.Steps)
+            | L -> (row, col-instr.Steps)
+        ) (0,0)
 
 let pathAreaDimensions (path: Path) =
     path |> Array.map fst |> Array.max |> (+)1,
@@ -113,6 +132,35 @@ let fillTrench (trench: Trench) =
                 if sentinel then filledTrench[row,col] <- '#'
     
     filledTrench
+
+
+module Fill = 
+    type Line = { Start : int*int; Stop: int*int }
+    type State = { PreviousRow : Line[]; Area: int }
+
+    let fillNodes (path: Path) =
+        let rows = 
+            path
+            |> Array.sort
+            |> Array.groupBy fst // group to rows
+            |> Array.map snd
+        
+        let mutable previousRow: (int*int) array = [||]
+        for row in rows do
+            for point in previousRow do
+                let rowIndex,colIndex  = point // bottonLeft
+                let top = 
+                    previousRow 
+                    |> Array.tryFind (fun (r,c) -> c = colIndex)
+                let right = 
+                    row 
+                    |> Array.filter (fun (r,c) -> c > colIndex)
+                    |> Array.tryHead
+                let left = 
+                    row 
+                    |> Array.filter (fun (r,c) -> c < colIndex)
+                    |> Array.tryLast
+ 
 
 let str (table: char array2d) = 
     let rowCount = table |> Array2D.length1
