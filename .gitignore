@@ -3,7 +3,7 @@ puzzle.input
 .fake
 obj
 bin
-*.fs
-*.fsproj
+# *.fs
+# *.fsproj
 output.txt
 .vs
