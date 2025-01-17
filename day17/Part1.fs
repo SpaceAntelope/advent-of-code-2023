@@ -15,13 +15,19 @@ module Part1 =
     type Cell = int * int
 
     type Dir =
-        | Fwd
+        | Up
+        | Dn
         | Lt
         | Rt
-    // with
-    //     member x.Next(row,col) =
-    //         match x with
-    //         | Lt ->
+    with 
+        static member From((row1,col1),(row2,col2)) =
+            match row2 - row1, col2 - col1 with
+            | rowDiff, colDiff when rowDiff = 0 && colDiff > 0 -> Rt
+            | rowDiff, colDiff when rowDiff = 0 && colDiff < 0 -> Lt
+            | rowDiff, colDiff when rowDiff > 0 && colDiff = 0 -> Dn
+            | rowDiff, colDiff when rowDiff < 0 && colDiff = 0 -> Up
+            | x -> failwithf "%A -> %A = %A bad diff" x (row1, col1) (row2, col2)
+
     let parse path =
         path
         |> File.ReadAllLines
@@ -73,34 +79,33 @@ module Part1 =
 
         let rec search
             (current: Cell)
-            (vector: Cell * Cell * Cell)
-            (movesSinceLastTurn: int)
+            (bias: Dir*int)
             (score: int)
             (path: char array2d)
             (depth: int)
             =
+            if current = (0, 1) && score = matrix.[0, 1] then
+                x <- true
+            
             let r, c = current
             visited.[r, c] <- score
-
+            let lastDir, consecutiveDirs = bias
             // printfn "%03d:%s%A" (depth) ("".PadLeft(depth)) current
             if x then
                 Matrix.printBase path []
-                printfn "HO HO HO %d %A -> %A" score current (neighborhood current)
+                printfn "Score: %d Current: %A -> %A" score current (neighborhood current)
 
                 neighborhood current
                 |> List.filter (fun (r, c) -> isInBounds r c)
                 |> List.iter (fun (r, c) -> 
-                    printfn $"%A{(r, c)}: {score + matrix.[r, c]} vs {visited.[r, c]}")
+                    let pass = if score + matrix.[r, c] < visited.[r, c] then "✔️" else ""
+                    printfn $"%A{(r, c)}: New: {score + matrix.[r, c]} vs Cached: {visited.[r, c]} {pass}")
             // printVisited visited
             // Console.ReadLine() |> ignore
             if current = start then
                 printfn "HEY HEY HEY %A" (neighborhood current)
 
-            if current = (0, 1) && score = matrix.[0, 1] then
-                printfn "HO HO HO %d %A -> %A" score current (neighborhood current)
-                //printVisited visited
-                x <- true
-                Matrix.printBase path []
+            
 
             if current = stop then
                 printfn "Score: %i" score
@@ -108,7 +113,7 @@ module Part1 =
                 // Matrix.printBase path []
                 [ score ]
             else
-                let (r1, c1), (r2, c2), (r3, c3) = vector
+                // let (r1, c1), (r2, c2), (r3, c3) = vector
 
                 current
                 |> neighborhood
@@ -117,29 +122,33 @@ module Part1 =
                     && visited.[row, col] > (score + matrix.[row, col])
                 // && visited.[row,col] = Int32.MaxValue
                 )
-                |> General.teeConditional (fun () -> current = (0, 1)) $"Current %A{current}"
+                |> General.teeConditional (fun () -> x) $"Filtered N of %A{current}"
                 |> List.sortBy (fun (row, col) -> matrix.[row, col])
                 |> List.collect (fun (row, col) ->
                     // visited.[row,col] <- score + matrix.[row,col]
 
                     let newPath = Array2D.copy path
                     newPath.[row, col] <- arrow current (row, col) //'0' + char matrix.[row,col]
+                    let newDir, consecutiveNewDirs =
+                        let currentDir = Dir.From(current, (row,col))
+                        if currentDir = lastDir 
+                        then currentDir, consecutiveDirs + 1
+                        else currentDir, 1
 
-                    let updatedMovesSinceLastTurn =
-                        if r2 <> row && c2 <> col then
-                            1
-                        else
-                            movesSinceLastTurn + 1
+                    // let updatedMovesSinceLastTurn =
+                    //     if r2 <> row && c2 <> col then
+                    //         1
+                    //     else
+                    //         movesSinceLastTurn + 1
 
-                    if updatedMovesSinceLastTurn >= 3 then
+                    if consecutiveNewDirs > 3 then
                         []
                     else
                         search
                             (row, col)
-                            ((r2, c2), (r3, c3), (current))
-                            updatedMovesSinceLastTurn
+                            (newDir, consecutiveNewDirs)
                             (score + matrix.[row, col])
                             newPath
                             (depth + 1))
 
-        search start ((-1, -1), (-2, -2), (-3, -3)) 0 0 path 0
+        search start (Lt,0) 0 path 0
