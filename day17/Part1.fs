@@ -27,6 +27,24 @@ module Part1 =
             | rowDiff, colDiff when rowDiff > 0 && colDiff = 0 -> Dn
             | rowDiff, colDiff when rowDiff < 0 && colDiff = 0 -> Up
             | x -> failwithf "%A -> %A = %A bad diff" x (row1, col1) (row2, col2)
+        member x.AsInt = 
+            match x with
+            | Up -> 0
+            | Rt -> 1
+            | Dn -> 2
+            | Lt -> 3
+        member x.ToArrow() =
+            match x with
+            | Rt ->  '►'
+            | Lt ->  '◄'
+            | Dn ->  '▼'
+            | Up ->  '▲'
+        member x.Opposite() =
+            match x with
+            | Rt ->  Lt
+            | Lt ->  Rt
+            | Dn ->  Up
+            | Up ->  Dn
 
 
     let parse path =
@@ -61,6 +79,115 @@ module Part1 =
           row - 1, col
           row, col + 1
           row, col - 1 ]
+
+    type State = {
+        Row: int
+        Col: int 
+        Dir: Dir
+        Repeats: int
+    } 
+    with 
+        member x.Current = (x.Row,x.Col)
+        static member From(row,col, dir,repeats) = { Row=row;Col=col;Dir=dir;Repeats=repeats }
+
+    let DykeBuilder (matrix: Matrix) = 
+        let rows, cols = matrix |> Matrix.size
+        let dirs = 4
+        // consecutive is 4 due to starting from zero
+        let path = 
+            matrix 
+            |> Matrix.allIndices 
+            |> Seq.fold (fun (state: Dictionary<Cell,Cell*Dir>) current -> 
+                state.Add(current, ((-1,-1),Lt)); state ) (Dictionary<Cell,Cell*Dir>())
+
+        let isInBounds row col =
+            (Matrix.isOutOfBounds (rows, cols) (row, col))
+            |> not
+
+        let initial = 0,0
+        let finale = rows-1, cols-1
+        let mutable state = State.From(-1,-1, Lt, 0)
+        let visited = Array4D.create rows cols dirs 4 Int32.MaxValue
+        visited.[0,0,Lt.AsInt,0] <- 0
+        let toVisit = 
+            let q = PriorityQueue<State, int>()
+            q.Enqueue(State.From(fst initial, snd initial,Lt,0), 0)
+            q
+
+        let mutable sentinel = true
+
+        while sentinel do
+            state <- toVisit.Dequeue()
+            
+            sentinel <- state.Current <> finale
+
+            if sentinel 
+            then 
+                let n = 
+                    neighborhood state.Current 
+                    |> List.filter (fun (r,c) -> isInBounds r c)
+                
+                for row,col in n do
+                    // printfn "%A %A" state (row,col)
+                    let nextDir = Dir.From(state.Current, (row,col))
+                    let nextRepeatedDir = 
+                        if nextDir = state.Dir 
+                        then state.Repeats + 1 else 1
+
+                    let isDoublingBack = nextDir.Opposite() = state.Dir
+
+                    if nextRepeatedDir <= 3 && not isDoublingBack
+                    then
+                        let lastScore = visited.[state.Row,state.Col,state.Dir.AsInt,state.Repeats]
+                        let nextScore = lastScore + matrix.[row,col]    
+
+                        if row = 12 && col = 12 
+                        then 
+                            printfn "%A -> %A %d -> %d" state.Current (row,col) lastScore nextScore
+
+                        if nextScore < visited.[row,col,nextDir.AsInt,nextRepeatedDir]
+                        then 
+                            visited.[row,col,nextDir.AsInt,nextRepeatedDir] <- nextScore
+                            path.[(row,col)] <- state.Current, nextDir
+                            toVisit.Enqueue(State.From(row,col,nextDir, nextRepeatedDir), nextScore)
+
+            
+        let score = visited.[state.Row,state.Col,state.Dir.AsInt,state.Repeats]
+
+
+        // let cellsOfPath = 
+        //     [
+        //         let mutable parent = path.[rows-1,cols-1]
+        //         yield parent
+        //         while fst parent <> (0,0) do
+        //             printfn "%A" parent
+        //             let (row,col), dir = parent
+        //             parent <- path.[row,col]
+        //             yield parent
+        //     ] 
+        //     |> Map.ofList
+
+        // let pathMatrix = Array2D.init rows cols (fun row col -> 
+        //     match cellsOfPath |> Map.tryFind (row,col) with
+        //     | Some x -> x.ToArrow()
+        //     | None -> '0' + char matrix.[row,col])
+
+        // Matrix.printBase pathMatrix []
+
+        score
+
+
+        // let finalScore = 
+        //     (path,(0,0))
+        //     |> Seq.unfold (fun (state: Dictionary<Cell,Cell>*Cell) ->  
+        //             let dic, pos = state
+        //             let parent = dic.[pos]
+        //             if parent = (0,0)
+        //             then None
+        //             else Some ((dic,parent), matrix.[fst parent, snd parent]))
+        //     |> Seq.sum
+        
+        // finalScore
 
     let pathFinding (matrix: Matrix) =
 
@@ -99,7 +226,6 @@ module Part1 =
             =
             let r, c = current
             let lastDir,times = bias
-            // visited.[r, c] <- score, dir, times
             let visitedKey = r,c,lastDir,times
             match visited |> Map.tryFind visitedKey with
             | Some x -> 
@@ -107,6 +233,7 @@ module Part1 =
             | None -> 
                     visited <- visited |> Map.add visitedKey score
 
+            // visited.[r, c] <- score, dir, times
 
             // printfn "%03d:%s%A" (depth) ("".PadLeft(depth)) current
 
@@ -121,14 +248,14 @@ module Part1 =
 
             // printVisited visited
             // Console.ReadLine() |> ignore
-            if current = start then
-                printfn "HEY HEY HEY %A" (neighborhood current)
+            //if current = start then
+                // printfn "HEY HEY HEY %A" (neighborhood current)
 
             if current = (0, 1) && score = matrix.[0, 1] then
                 printfn "HO HO HO %d %A -> %A" score current (neighborhood current)
                 //printVisited visited
                 x <- true
-                Matrix.printBase path []
+                // Matrix.printBase path []
 
             if current = stop then
                 printfn "Score: %i" score
@@ -142,18 +269,17 @@ module Part1 =
                 |> neighborhood
                 |> List.filter (fun (row, col) ->
                     isInBounds row col 
-                    && isVisitable row col lastDir times (score + matrix.[row, col])
+                    //&& isVisitable row col lastDir times (score + matrix.[row, col])
                     // && visited.[row, col, dir, times] > (score + matrix.[row, col])
                 // && visited.[row,col] = Int32.MaxValue
                 )
-                |> General.teeConditional (fun () -> current = (0, 1)) $"Current %A{current}"
-                |> List.sortBy (fun (row, col) -> matrix.[row, col])
+                // |> General.teeConditional (fun () -> current = (0, 1)) $"Current %A{current}"
+                // |> List.sortBy (fun (row, col) -> matrix.[row, col])
                 |> List.collect (fun (row, col) ->
                     // visited.[row,col] <- score + matrix.[row,col]
 
                     let newPath = Array2D.copy path
                     newPath.[row, col] <- arrow current (row, col) //'0' + char matrix.[row,col]
-
                     
                     let newDir, newTimes = 
                         let newDir = Dir.From(current, (row,col))
@@ -170,7 +296,10 @@ module Part1 =
                         | Dn, Up -> true
                         | _ -> false
 
-                    if newTimes > 3 || isMovingToPreviousStep then
+                    let isUnvisitedOrHigherScored = 
+                        isVisitable row col newDir newTimes (score + matrix.[row, col])
+
+                    if newTimes > 3 || isMovingToPreviousStep || not isUnvisitedOrHigherScored then
                         []
                     else
                         search

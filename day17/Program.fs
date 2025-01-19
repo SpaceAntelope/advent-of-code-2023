@@ -8,6 +8,10 @@ open Common
 
 "./Input/puzzle.example"
 |> Part1.parse
-|> Part1.pathFinding
-|> List.min
+|> Part1.DykeBuilder
 |> Assertions.shouldBe 102
+
+"./Input/puzzle.input"
+|> Part1.parse
+|> Part1.DykeBuilder
+|> printfn "The least heat loss the crucible can incur is %d"
