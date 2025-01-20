@@ -29,12 +29,19 @@ with
         | Lt ->  '◄'
         | Dn ->  '▼'
         | Up ->  '▲'
-    member x.Opposite() =
+    member x.Opposite =
         match x with
         | Rt ->  Lt
         | Lt ->  Rt
         | Dn ->  Up
         | Up ->  Dn
+    
+    member x.Next(cell: Cell) =
+        match cell,x with
+        | (row,col), Up -> row-1,col
+        | (row,col), Rt -> row,col+1
+        | (row,col), Dn -> row+1,col
+        | (row,col), Lt -> row,col-1
 
 type State = {
         Row: int

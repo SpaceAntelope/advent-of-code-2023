@@ -75,7 +75,7 @@ module Part1 =
                         if nextDir = state.Dir 
                         then state.Repeats + 1 else 1
 
-                    let isDoublingBack = nextDir.Opposite() = state.Dir
+                    let isDoublingBack = nextDir.Opposite = state.Dir
 
                     if nextRepeatedDir <= 3 && not isDoublingBack
                     then
