@@ -10,6 +10,16 @@ namespace Common
                 ([0..rows-1],[0..cols-1])
                 ||> Seq.allPairs
 
+        let findCell predicate matrix = 
+            matrix
+            |> allIndices
+            |> Seq.find (fun (row,col) -> predicate <| matrix.[row, col])
+        
+        let tryFindCell predicate matrix = 
+            matrix
+            |> allIndices
+            |> Seq.tryFind (fun (row,col) -> predicate <| matrix.[row, col])
+
         let size (matrix : 'a array2d) =
             let rows = matrix |> Array2D.length1
             let cols = matrix |> Array2D.length2
@@ -21,6 +31,14 @@ namespace Common
             for row in 0..rows-1 do
                 for col in 0..cols-1 do
                     printf " %O" matrix.[row,col]
+                printfn ""
+
+        let simplePrintUnspaced (matrix : 'a array2d) =
+            let rows,cols = size matrix
+
+            for row in 0..rows-1 do
+                for col in 0..cols-1 do
+                    printf "%O" matrix.[row,col]
                 printfn ""
 
         let isOutOfBounds (size: int*int) (point: int*int) =
