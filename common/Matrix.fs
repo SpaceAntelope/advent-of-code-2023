@@ -52,9 +52,6 @@ namespace Common
 
             fun row col -> isOutOfBounds (rows,cols) (row,col)
 
-
-        
-
         let printBase (matrix: char array2d) (iconRules : (Set<int*int>*char) seq) =
             let (rows,cols) = size matrix
             
