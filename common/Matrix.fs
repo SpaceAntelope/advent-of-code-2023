@@ -56,8 +56,8 @@ namespace Common
             let (rows,cols) = size matrix
             
             let _str = StringBuilder()
-            let strn (text: string) = _str.AppendLine(text) |> ignore
-            let str (text: string) = _str.Append(text) |> ignore
+            let strn (text: string) = _str.AppendLine(text) |> ignore // printfn "%s" text 
+            let str (text: string) = _str.Append(text) |> ignore // printf "%s" text
 
             let printColIndex () = 
                 strn ""
@@ -72,6 +72,10 @@ namespace Common
                 )
 
                 strn ""
+
+            let maps = 
+                iconRules
+                |> Seq.map (fun (ruleSet, icon) -> ruleSet |> Seq.cast<int*int> |> Seq.map (fun cell -> cell, icon) |> readOnlyDict)
 
             printColIndex()
             for row in 0..rows-1 do

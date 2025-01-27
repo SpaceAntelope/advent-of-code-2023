@@ -2,6 +2,8 @@
 open Common
 open System.Text
 
+//  ([Up;Rt;Dn;Lt] ,[Up;Rt;Dn;Lt]) ||> List.allPairs |> List.iter(fun (x,y)->printfn "| %A, %A -> " x y)
+
 type Dir = Lt | Rt | Up | Dn
     with 
         static member From(cell1: int*int, cell2: int*int) =
@@ -13,7 +15,14 @@ type Dir = Lt | Rt | Up | Dn
             | rowDiff, colDiff when rowDiff > 0 && colDiff = 0 -> Dn
             | rowDiff, colDiff when rowDiff < 0 && colDiff = 0 -> Up
             | x -> failwithf "%A -> %A = %A bad diff" x (row1,col1) (row2,col2)
+        member x.Opposite = 
+            match x with Up -> Dn | Lt -> Rt | Dn -> Up | Rt -> Lt
+        member x.RotateRight =
+            match x with Up -> Rt | Rt -> Dn | Dn -> Lt | Lt -> Up
+        member x.RotateLeft =
+            match x with Up -> Lt | Lt -> Dn | Dn -> Rt | Rt -> Up
 
+//([Hor;Ver;TLt;TRt;BLt;BRt],[Hor;Ver;TLt;TRt;BLt;BRt]) ||> List.allPairs |> List.iter(fun (x,y)->printfn "| %A, %A -> " x y)
 type Tile = 
     | Hor | Ver | TLt | TRt | BLt | BRt | Ground | Start | Enclosed
     with
@@ -51,6 +60,13 @@ type Tile =
             | Ground -> '▒'
             | Start -> '✿'
             | Enclosed -> '█'
+        
+        // member x.Edges =
+        //     match x with
+        //     | Ver -> Lt,Rt
+        //     | Hor -> Up,Dn
+        //     | TRt -> Ver, Rt
+
 
 type Matrix = Tile array2d
 type Cell = int*int
@@ -75,6 +91,12 @@ let printPath (matrix: Tile array2d) (path: Cell seq) =
         path 
         |> Seq.groupBy (fun (r,c) -> matrix.[r,c])
         |> Seq.map(fun (c,grp) -> grp |> Set.ofSeq, c.AsAscii2)
+    
+    let asciiMatrix = 
+        Array2D.init rows cols (fun row col -> matrix.[row,col] |> _.AsAscii)
+    
+    Matrix.printBase asciiMatrix iconRules
+
     let asciiMatrix = 
         Array2D.init rows cols (fun row col -> matrix.[row,col] |> _.AsAscii)
     
@@ -179,22 +201,22 @@ let followPipe (matrix: Tile array2d) =
     let path = ResizeArray<int*int>()
                                 
     let rec search current depth  = 
-        // path.Add(current)
+        path.Add(current)
         //printfn "%04d %A" depth current
         let row,col = current
         visited.[row,col] <- true
         
         match (next current) with
-        | None -> List.empty
+        | None -> () //List.empty
         | Some cell -> 
-            // search cell (depth + 1)
-            cell::(search cell (depth + 1))
+            search cell (depth + 1)
+            //cell::(search cell (depth + 1))
             
     let start = matrix |> Matrix.findCell (fun tile -> tile = Tile.Start)
 
     search start 0
 
-    // path
+    path
 
 let compatibleTilesHelper() =
         let sb = StringBuilder()
@@ -236,13 +258,13 @@ let pathDisplay() =
         "./input/puzzle.example3" 
         "./input/puzzle.example4" 
         "./input/puzzle.example5"
-        "./input/puzzle.input"
+        // "./input/puzzle.input"
     ]
     |> List.map parse
     |> List.iter (fun matrix -> 
         let path = followPipe matrix
-        printfn "Path size = %d" path.Length
-        // printPath matrix path
+        printfn "Path size = %d" path.Count
+        printPath matrix path
         // ()
         )
 
@@ -258,4 +280,146 @@ let pathDisplay() =
 // |> List.map parse
 // |> List.iter printTiles
 
-pathDisplay()
+// pathDisplay()
+
+
+
+let countEnclosed path =    
+    let matrix = parse path
+    let rows,cols = matrix |> Matrix.size
+    let pipeline = followPipe matrix
+    let pipeSet = pipeline |> Set.ofSeq
+
+    let tileFromStart = 
+        let start = matrix |> Matrix.findCell (fun x -> x = Start)
+        let secondRow,secondCol = pipeline.[1]
+        let lastRow, lastCol = pipeline |> Seq.last
+        let dir1 = Dir.From((lastRow,lastCol),start )
+        let dir2 = Dir.From(start, (secondRow, secondCol))
+
+        match dir1, dir2 with
+        | Up, Up -> Ver
+        | Dn, Dn -> Ver
+        | Rt, Rt -> Hor
+        | Lt, Lt -> Hor
+        | Up, Lt -> TRt
+        | Rt, Dn -> TRt
+        | Lt, Dn -> TLt
+        | Up, Rt -> TLt
+        | Dn, Lt -> BRt
+        | Rt, Up -> BRt
+        | Dn, Rt -> BLt
+        | Lt, Up -> BLt
+        | x, y -> failwithf "x - %A -> y - %A -> z shouldn't be possible" x y
+        // | Up, Dn -> 
+        // | Rt, Lt -> 
+        // | Dn, Up -> 
+        // | Lt, Rt -> 
+
+
+    let isOutOfBounds = Matrix.isOutOfBoundsFactory matrix
+
+    let arrayNotInPipe (vec: (int * int) list)  =
+        vec |> List.forall (fun cell -> pipeSet |> Set.contains cell |> not)
+
+    let mutable enclosed = Set.empty<int*int>
+    
+    let rec gatherEnclosed start = 
+        let row,col = start
+        [ row+1,col;row-1,col;row,col+1;row,col-1]
+        |> List.filter (fun cell -> 
+                isOutOfBounds (fst cell)  (snd cell) |> not
+                && pipeSet |> Set.contains cell |> not
+                && enclosed |> Set.contains cell |> not)
+        |> List.iter (fun cell -> 
+            enclosed <- enclosed |> Set.add cell
+            gatherEnclosed cell)
+
+    let outwardLookingPipePiece = 
+        pipeline
+        |> Seq.choose (fun (row,col) -> 
+            match matrix.[row,col] with
+            | Hor when [0..row-1] |> List.map (fun r -> r,col) |> arrayNotInPipe -> Some (row,col,Up)
+            | Hor when [row+1 .. rows-1] |> List.map (fun r -> r,col) |> arrayNotInPipe -> Some (row,col,Dn)
+            | Ver when [0..col-1] |> List.map (fun c -> row,c) |> arrayNotInPipe -> Some (row,col,Lt)
+            | Ver when [col+1 .. cols-1] |> List.map (fun c -> row,c) |> arrayNotInPipe -> Some (row,col,Rt)
+            | _ -> None)
+        |> Seq.head
+    
+    
+    let mutable prevCell, prevInwardFace = 
+        outwardLookingPipePiece 
+        |> fun (row,col,dir) -> (row,col), dir.Opposite
+
+    let mutable index = pipeline |> Seq.findIndex (fun cell -> cell = prevCell)
+    
+    for i in 1..pipeline.Count-1 do
+        let idx = (i + index) % pipeline.Count
+        let row,col = pipeline.[idx]
+        let dirOfEntry = Dir.From(prevCell,(row,col))
+        let tile = 
+            let tile = matrix.[row,col]
+            if tile = Start 
+            then tileFromStart 
+            else tile
+
+        let inwardFace = 
+            match tile, dirOfEntry with
+            | Ver, _ | Hor, _ -> prevInwardFace
+            | TRt, Rt -> prevInwardFace.RotateRight
+            | TRt, Up -> prevInwardFace.RotateLeft
+            | TLt, Lt -> prevInwardFace.RotateLeft
+            | TLt, Up -> prevInwardFace.RotateRight
+            | BLt, Dn -> prevInwardFace.RotateLeft
+            | BLt, Lt -> prevInwardFace.RotateRight
+            | BRt, Dn -> prevInwardFace.RotateRight
+            | BRt, Rt -> prevInwardFace.RotateLeft
+            | x -> failwithf "%A is not a pipe" x
+
+        let inwardCell = 
+            match inwardFace with
+            | Up -> row - 1, col
+            | Dn -> row + 1, col
+            | Lt -> row, col - 1
+            | Rt -> row, col + 1
+
+        gatherEnclosed inwardCell
+
+        printfn "Cell %A Inward cell %A " (row,col) inwardCell
+        printfn "DirOfEntry %A InwardDir %A" dirOfEntry inwardFace
+        printfn "%d" enclosed.Count
+
+        prevCell <- row,col
+        prevInwardFace <- inwardFace
+
+        for (row,col) in enclosed do
+            matrix.[row,col] <- Enclosed
+        printPath matrix []
+        // printfn "Enclosed count %d" enclosed.Count
+    
+
+    printPath matrix []
+
+    enclosed.Count
+
+
+
+"./input/puzzle.example1"
+|> countEnclosed
+|> Assertions.shouldBe 4
+
+"./input/puzzle.example5"
+|> countEnclosed
+|> Assertions.shouldBe 4
+
+"./input/puzzle.example2"
+|> countEnclosed
+|> Assertions.shouldBe 8
+
+"./input/puzzle.example3"
+|> countEnclosed
+|> Assertions.shouldBe 10
+
+"./input/puzzle.input"
+|> countEnclosed
+|> printfn "There are %d tiles enclosed by the loop."
