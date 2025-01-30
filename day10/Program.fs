@@ -97,10 +97,10 @@ let printPath (matrix: Tile array2d) (path: Cell seq) =
     
     Matrix.printBase asciiMatrix iconRules
 
-    let asciiMatrix = 
-        Array2D.init rows cols (fun row col -> matrix.[row,col] |> _.AsAscii)
+    // let asciiMatrix = 
+    //     Array2D.init rows cols (fun row col -> matrix.[row,col] |> _.AsAscii)
     
-    Matrix.printBase asciiMatrix iconRules
+    // Matrix.printBase asciiMatrix iconRules
 
 let followPipe (matrix: Tile array2d) =
     let (rows,cols) = Matrix.size matrix
@@ -291,10 +291,8 @@ let countEnclosed path =
     let pipeline = followPipe matrix
     let pipeSet = pipeline |> Set.ofSeq
 
-    // printPath matrix pipeline
-
+    let start = matrix |> Matrix.findCell (fun x -> x = Start)
     let tileFromStart = 
-        let start = matrix |> Matrix.findCell (fun x -> x = Start)
         let secondRow,secondCol = pipeline.[1]
         let lastRow, lastCol = pipeline |> Seq.last
         let dir1 = Dir.From((lastRow,lastCol),start )
@@ -314,10 +312,6 @@ let countEnclosed path =
         | Dn, Rt -> BLt
         | Lt, Up -> BLt
         | x, y -> failwithf "x - %A -> y - %A -> z shouldn't be possible" x y
-        // | Up, Dn -> 
-        // | Rt, Lt -> 
-        // | Dn, Up -> 
-        // | Lt, Rt -> 
 
 
     let isOutOfBounds = Matrix.isOutOfBoundsFactory matrix
@@ -328,16 +322,17 @@ let countEnclosed path =
     let mutable enclosed = Set.empty<int*int>
 
     let isEnclosable cell =
-        isOutOfBounds (fst cell)  (snd cell) |> not
+        let r,c = cell
+        if cell = (38,87) 
+        then printfn $"%A{cell}={matrix.[r,c]}: Bounds: {isOutOfBounds r c} Path: {pipeSet |> Set.contains cell} Enclosed: {enclosed |> Set.contains cell}"
+        isOutOfBounds r c |> not
         && pipeSet |> Set.contains cell |> not
         && enclosed |> Set.contains cell |> not
     
     let rec gatherEnclosed start = 
-        // printfn "Start of enclosure: %A" start        
         let row,col = start
         [ row+1,col;row-1,col;row,col+1;row,col-1]
         |> List.filter isEnclosable
-        // |> General.tee $"currently enclosed {enclosed.Count}"
         |> List.iter (fun cell -> 
             enclosed <- enclosed |> Set.add cell
             gatherEnclosed cell)
@@ -370,47 +365,60 @@ let countEnclosed path =
             then tileFromStart 
             else tile
 
-        let inwardFace = 
+        let inwardFaces = 
             match tile, dirOfEntry with
-            | Ver, _ | Hor, _ -> prevInwardFace
-            | TRt, Rt -> prevInwardFace.RotateRight
-            | TRt, Up -> prevInwardFace.RotateLeft
-            | TLt, Lt -> prevInwardFace.RotateLeft
-            | TLt, Up -> prevInwardFace.RotateRight
-            | BLt, Dn -> prevInwardFace.RotateLeft
-            | BLt, Lt -> prevInwardFace.RotateRight
-            | BRt, Dn -> prevInwardFace.RotateRight
-            | BRt, Rt -> prevInwardFace.RotateLeft
+            | Ver, _ | Hor, _ -> [prevInwardFace]
+            | TRt, Rt when prevInwardFace = Up -> [prevInwardFace;prevInwardFace.RotateRight]
+            | TRt, Up when prevInwardFace = Rt -> [prevInwardFace;prevInwardFace.RotateLeft]
+            | TLt, Lt when prevInwardFace = Up -> [prevInwardFace;prevInwardFace.RotateLeft]
+            | TLt, Up when prevInwardFace = Lt -> [prevInwardFace;prevInwardFace.RotateRight]
+            | BLt, Dn when prevInwardFace = Lt -> [prevInwardFace;prevInwardFace.RotateLeft]
+            | BLt, Lt when prevInwardFace = Dn -> [prevInwardFace;prevInwardFace.RotateRight]
+            | BRt, Dn when prevInwardFace = Rt -> [prevInwardFace;prevInwardFace.RotateRight]
+            | BRt, Rt when prevInwardFace = Dn -> [prevInwardFace;prevInwardFace.RotateLeft]
+
+            | TRt, Rt -> [prevInwardFace.RotateRight]
+            | TRt, Up -> [prevInwardFace.RotateLeft]
+            | TLt, Lt -> [prevInwardFace.RotateLeft]
+            | TLt, Up -> [prevInwardFace.RotateRight]
+            | BLt, Dn -> [prevInwardFace.RotateLeft]
+            | BLt, Lt -> [prevInwardFace.RotateRight]
+            | BRt, Dn -> [prevInwardFace.RotateRight]
+            | BRt, Rt -> [prevInwardFace.RotateLeft]
             | x -> failwithf "%A is not a pipe" x
 
-        let inwardCell = 
-            match inwardFace with
-            | Up -> row - 1, col
-            | Dn -> row + 1, col
-            | Lt -> row, col - 1
-            | Rt -> row, col + 1
+        
 
-        if isEnclosable inwardCell
-        then 
-            enclosed <- enclosed |> Set.add inwardCell
-            gatherEnclosed inwardCell
+        let inwardCells = 
+            inwardFaces
+            |> List.map (fun inwardFace ->
+                match inwardFace with
+                | Up -> row - 1, col
+                | Dn -> row + 1, col
+                | Lt -> row, col - 1
+                | Rt -> row, col + 1)
+        
+        for inwardCell in inwardCells do
+            if isEnclosable inwardCell
+            then 
+                enclosed <- enclosed |> Set.add inwardCell
+                gatherEnclosed inwardCell
 
+        // if  (38,87) |> General.nSimple |> List.contains (row,col)
+        // then 
         // printfn "Step: %d" i
-        // printfn "Cell %A Inward cell %A " (row,col) inwardCell
+        // printfn "Cell %A = %c Inward cell %A = %c Enclosable: %b" (row,col) (matrix.[row,col].AsAscii) inwardCell (matrix.[fst inwardCell,snd inwardCell].AsAscii) (isEnclosable inwardCell)
         // printfn "DirOfEntry %A InwardDir %A" dirOfEntry inwardFace
-        // printfn "%d" enclosed.Count
+        // printfn "Enclosed count: %d" enclosed.Count
 
         prevCell <- row,col
-        prevInwardFace <- inwardFace
+        prevInwardFace <- inwardFaces |> List.last
 
         for (row,col) in enclosed do
             matrix.[row,col] <- Enclosed
         
-        //printPath matrix []
-        // printfn "Enclosed count %d" enclosed.Count
+    printPath matrix pipeline
     
-    // printPath matrix pipeline
-
     enclosed.Count
 
 
@@ -430,6 +438,10 @@ let countEnclosed path =
 "./input/puzzle.example3"
 |> countEnclosed
 |> Assertions.shouldBe 10
+
+"./input/puzzle.example6"
+|> countEnclosed
+|> Assertions.shouldBe 1
 
 "./input/puzzle.input"
 |> countEnclosed

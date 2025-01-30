@@ -52,10 +52,10 @@ namespace Common
 
             fun row col -> isOutOfBounds (rows,cols) (row,col)
 
-        let printBase (matrix: char array2d) (iconRules : (Set<int*int>*char) seq) =
+        let printBase (matrix: char array2d) (iconRules : (Set<int*int>*char) seq)  =
             let (rows,cols) = size matrix
             
-            let _str = StringBuilder()
+            let _str = StringBuilder(rows*cols*2)
             let strn (text: string) = _str.AppendLine(text) |> ignore // printfn "%s" text 
             let str (text: string) = _str.Append(text) |> ignore // printf "%s" text
 
@@ -67,7 +67,7 @@ namespace Common
                 |> Array.transpose 
                 |> Array.iter (fun digits-> 
                     str "   "
-                    digits |> Array.iter((sprintf " %c")>>str)
+                    digits |> Array.iter((sprintf "%c")>>str)
                     strn ""
                 )
 
@@ -75,21 +75,30 @@ namespace Common
 
             let maps = 
                 iconRules
-                |> Seq.map (fun (ruleSet, icon) -> ruleSet |> Seq.cast<int*int> |> Seq.map (fun cell -> cell, icon) |> readOnlyDict)
-
+                |> Seq.collect (fun (ruleSet, icon) -> 
+                    ruleSet 
+                    |> Seq.cast<int*int> 
+                    |> Seq.map (fun cell -> cell, icon))
+                |> readOnlyDict
+            
             printColIndex()
+
             for row in 0..rows-1 do
-                str $"%03d{row} "
-                for col in 0..cols-1 do                    
-                    iconRules 
-                    |> Seq.tryFind (fun (cells,_) -> cells |> Set.contains (row,col))
-                    |> function 
-                    | Some (_,icon) -> icon
-                    | None -> matrix.[row,col]
-                    |> sprintf "%c " 
+                str $"%03d{row}"
+                for col in 0..cols-1 do      
+                    match maps.TryGetValue((row,col)) with
+                    | true, c -> c
+                    | false, _ -> matrix.[row,col]
+                    // iconRules 
+                    // |> Seq.tryFind (fun (cells,_) -> cells |> Set.contains (row,col))
+                    // |> function 
+                    // | Some (_,icon) -> icon
+                    // | None -> matrix.[row,col]
+                    |> sprintf "%c" 
                     |> str
                 str $"%03d{row}"
                 if row < rows then strn ""
+            
             printColIndex()
             strn ""
         

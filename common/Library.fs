@@ -15,3 +15,6 @@ module General =
         let r1,c1 = a
         let r2,c2 = b
         Math.Abs(r2-r1) + Math.Abs(c2-c1)
+
+    let nSimple (r,c) =
+        [r+1,c;r-1,c;r,c+1;r,c-1]
