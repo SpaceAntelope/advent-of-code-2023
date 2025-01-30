@@ -285,10 +285,13 @@ let pathDisplay() =
 
 
 let countEnclosed path =    
+    printfn "Processing %s" path
     let matrix = parse path
     let rows,cols = matrix |> Matrix.size
     let pipeline = followPipe matrix
     let pipeSet = pipeline |> Set.ofSeq
+
+    // printPath matrix pipeline
 
     let tileFromStart = 
         let start = matrix |> Matrix.findCell (fun x -> x = Start)
@@ -323,14 +326,18 @@ let countEnclosed path =
         vec |> List.forall (fun cell -> pipeSet |> Set.contains cell |> not)
 
     let mutable enclosed = Set.empty<int*int>
+
+    let isEnclosable cell =
+        isOutOfBounds (fst cell)  (snd cell) |> not
+        && pipeSet |> Set.contains cell |> not
+        && enclosed |> Set.contains cell |> not
     
     let rec gatherEnclosed start = 
+        // printfn "Start of enclosure: %A" start        
         let row,col = start
         [ row+1,col;row-1,col;row,col+1;row,col-1]
-        |> List.filter (fun cell -> 
-                isOutOfBounds (fst cell)  (snd cell) |> not
-                && pipeSet |> Set.contains cell |> not
-                && enclosed |> Set.contains cell |> not)
+        |> List.filter isEnclosable
+        // |> General.tee $"currently enclosed {enclosed.Count}"
         |> List.iter (fun cell -> 
             enclosed <- enclosed |> Set.add cell
             gatherEnclosed cell)
@@ -383,22 +390,26 @@ let countEnclosed path =
             | Lt -> row, col - 1
             | Rt -> row, col + 1
 
-        gatherEnclosed inwardCell
+        if isEnclosable inwardCell
+        then 
+            enclosed <- enclosed |> Set.add inwardCell
+            gatherEnclosed inwardCell
 
-        printfn "Cell %A Inward cell %A " (row,col) inwardCell
-        printfn "DirOfEntry %A InwardDir %A" dirOfEntry inwardFace
-        printfn "%d" enclosed.Count
+        // printfn "Step: %d" i
+        // printfn "Cell %A Inward cell %A " (row,col) inwardCell
+        // printfn "DirOfEntry %A InwardDir %A" dirOfEntry inwardFace
+        // printfn "%d" enclosed.Count
 
         prevCell <- row,col
         prevInwardFace <- inwardFace
 
         for (row,col) in enclosed do
             matrix.[row,col] <- Enclosed
-        printPath matrix []
+        
+        //printPath matrix []
         // printfn "Enclosed count %d" enclosed.Count
     
-
-    printPath matrix []
+    // printPath matrix pipeline
 
     enclosed.Count
 
