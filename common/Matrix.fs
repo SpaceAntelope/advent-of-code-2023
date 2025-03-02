@@ -67,7 +67,7 @@ namespace Common
                 |> Array.transpose 
                 |> Array.iter (fun digits-> 
                     str "   "
-                    digits |> Array.iter((sprintf "%c")>>str)
+                    digits |> Array.iter((sprintf " %c")>>str)
                     strn ""
                 )
 
@@ -94,9 +94,9 @@ namespace Common
                     // |> function 
                     // | Some (_,icon) -> icon
                     // | None -> matrix.[row,col]
-                    |> sprintf "%c" 
+                    |> sprintf " %c" 
                     |> str
-                str $"%03d{row}"
+                str $" %03d{row}"
                 if row < rows then strn ""
             
             printColIndex()
