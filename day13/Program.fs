@@ -91,16 +91,19 @@ let symmetry (area: Area) =
         findLeftRightSymmetryAxis area |]
     |> Array.choose id
 
-"./input/puzzle.example"
+"input/puzzle.example"
 |> parse 
 |> Array.collect symmetry
 |> Array.sumBy _.Summarize()
 |> Assertions.shouldBe 405
 
-"./input/puzzle.input"
+"input/puzzle.input"
 |> parse 
 |> Array.collect symmetry
-|> fun x -> printfn $"Found {x.Length} patterns."; x
+|> fun x -> 
+    printfn $"Found {x.Length} symmetric patterns."; 
+    x.Length |> Assertions.shouldBe 100
+    x
 |> Array.sumBy _.Summarize()
 |> printfn "Pattern summary is %A"
 
@@ -121,42 +124,93 @@ let haveOneTileDifferent<'T when 'T : equality> (a: 'T[]) (b: 'T[])  =
     else None
 
 
-let rec symmetryPairs (arr: 'a array) =
-    let head = arr |> Array.head
-    let tail= arr |> Array.tail
-    match tail with 
-    | [||] -> [||]
-    | _ -> 
-        tail
-        |> Array.map (fun x -> head, x)
-        |> Array.where( fun (x,y)  -> (y-x)%2=0)
-        |> Array.append (symmetryPairs tail)
-
-let CheckLeftRightSymmetry2<'T when 'T : equality> (matrix : 'T array2d)
-    let rows,cols = Matrix.size matrix1
-    matrix1
-    |> Matrix.allIndices
-    |> Seq.tryFind (fun (row,col) -> matrix1.[row,col] <> matrix2.[row, cols-col-1])
-    |> function 
-    | Some _ -> false
-    | None -> true
-
-// let findLeftRightSymmetryAxis2 (area: Area) =
-//     let area = Area.AsChar area
-//     let rows,cols = Matrix.size area
-//     [|0..cols-1|]
-//     |> symmetryPairs
-//     |> Array.choose (fun (c1,c2) -> 
-//         haveOneTileDifferent (area[*,c1]) (area[*,c2]) 
-//         |> Option.map (fun index -> c1,c2,index))
+let symmetryIndexPairs (length: int) = 
+    let rec symmetryPairs (arr: int array) =
+        let head = arr |> Array.head
+        let tail= arr |> Array.tail
+        match tail with 
+        | [||] -> [||]
+        | _ -> 
+            tail
+            |> Array.map (fun x -> head, x)
+            |> Array.where( fun (x,y)  -> (y-x-1)%2=0)
+            |> Array.append (symmetryPairs tail)
     
-//     |> Array.pairwise 
-//     |> Array.where (fun (c1,c2) -> area[*,c1] = area[*,c2])
-//     |> Array.tryFind (fun (c1,c2) -> 
-//         let width = Math.Min(c1+1, cols - c2)
-//         let left = area.[*, c1-width+1..c1]
-//         let right = area.[*, c2..c2+width-1]
+    let mutable cache: Map<int,(int * int) array> = Map.empty // Map<int, (int*int) array>()
+    match cache |> Map.tryFind length with
+    | Some pairs -> pairs
+    | None -> 
+        let pairs = symmetryPairs [|0..length-1|]
+        cache <- cache |> Map.add length pairs
+        pairs
+    
+    
 
-//         CheckLeftRightSymmetry left right)
-//     |> Option.map (fun point -> H point)
-        
+let CheckLeftRightSymmetry2<'T when 'T : equality> (leftIndex: int) (rightIndex: int) (matrix : 'T array2d) =
+    let rows,cols = Matrix.size matrix
+    let stepsToMiddle = (rightIndex - leftIndex - 1) / 2 
+    
+    // internal symmetry
+    [1..stepsToMiddle ]
+    |> List.forall (fun i -> matrix.[*,leftIndex + i] = matrix.[*,rightIndex - i] )
+    && // external symmetry    
+    [rightIndex..cols-1]
+    |> List.map(fun i -> i - rightIndex + 1)
+    |> List.filter (fun i -> leftIndex - i >= 0 && rightIndex + i < cols)
+    |> List.forall (fun i -> matrix.[*,leftIndex - i] = matrix.[*,rightIndex + i])
+    
+let CheckTopBottomSymmetry2<'T when 'T : equality> (topIndex: int) (bottomIndex: int) (matrix : 'T array2d) =
+    let rows,cols = Matrix.size matrix
+    let stepsToMiddle = (bottomIndex - topIndex - 1)  / 2 
+    
+    // internal symmetry
+    [1..stepsToMiddle ]
+    |> List.forall (fun i -> matrix.[topIndex + i,*] = matrix.[bottomIndex - i, *] )
+    && // external symmetry    
+    [bottomIndex..rows-1]
+    |> List.map(fun i -> i - bottomIndex + 1)
+    |> List.filter (fun i -> topIndex - i >= 0 && bottomIndex + i < rows)
+    |> List.forall (fun i -> matrix.[topIndex - i,*] = matrix.[bottomIndex + i,*])
+
+let findSymmetryAxis(area : Area) =
+    let rows,cols = Matrix.size area
+    
+    rows
+    |> symmetryIndexPairs 
+    |> Array.filter (fun (topIndex,bottomIndex) -> 
+        haveOneTileDifferent (area.[topIndex, *]) (area.[bottomIndex,*]) |> Option.isSome)
+    |> Array.tryFind (fun (topIndex,bottomIndex) -> 
+        CheckTopBottomSymmetry2 topIndex bottomIndex area)
+    |> Option.map (fun (r1,r2) -> 
+        let r1_axis = r1 + (r2 - r1)/2
+        let r2_axis = r1_axis + 1
+        V(r1_axis, r2_axis) )
+    |> function
+    | None -> 
+        cols
+        |> symmetryIndexPairs
+        |> Array.filter (fun (leftIndex, rightIndex) -> 
+            haveOneTileDifferent area.[*, leftIndex] area.[*, rightIndex] |> Option.isSome)
+        |> Array.tryFind (fun (leftIndex,rightIndex) -> 
+            CheckLeftRightSymmetry2 leftIndex rightIndex area)
+        |> Option.map (fun (c1,c2) -> 
+            let c1_axis = c1 + (c2 - c1)/2
+            let c2_axis = c1_axis + 1
+            H(c1_axis, c2_axis) )
+    | x -> x
+
+"input/puzzle.example"
+|> parse 
+|> Array.choose findSymmetryAxis
+|> Array.sumBy _.Summarize()
+|> Assertions.shouldBe 400
+
+"input/puzzle.input"
+|> parse 
+|> Array.choose findSymmetryAxis
+|> fun x -> 
+    printfn $"After removing smudges found {x.Length} symmetric patterns."; 
+    x.Length |> Assertions.shouldBe 100
+    x
+|> Array.sumBy _.Summarize()
+|> printfn "New pattern summary is %A"
