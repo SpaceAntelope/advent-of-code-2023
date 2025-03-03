@@ -100,5 +100,63 @@ let symmetry (area: Area) =
 "./input/puzzle.input"
 |> parse 
 |> Array.collect symmetry
+|> fun x -> printfn $"Found {x.Length} patterns."; x
 |> Array.sumBy _.Summarize()
 |> printfn "Pattern summary is %A"
+
+let haveOneTileDifferent<'T when 'T : equality> (a: 'T[]) (b: 'T[])  =
+    let mutable diffCount = 0
+    let mutable index = 0
+    let mutable diffIndex = -1
+    
+    while diffCount < 2 && index < a.Length do
+        if a.[index] <> b.[index] 
+        then 
+            diffCount <- diffCount + 1
+            diffIndex <- index
+        index <- index + 1
+
+    if diffCount = 1
+    then Some diffIndex
+    else None
+
+
+let rec symmetryPairs (arr: 'a array) =
+    let head = arr |> Array.head
+    let tail= arr |> Array.tail
+    match tail with 
+    | [||] -> [||]
+    | _ -> 
+        tail
+        |> Array.map (fun x -> head, x)
+        |> Array.where( fun (x,y)  -> (y-x)%2=0)
+        |> Array.append (symmetryPairs tail)
+
+let CheckLeftRightSymmetry2<'T when 'T : equality> (matrix : 'T array2d)
+    let rows,cols = Matrix.size matrix1
+    matrix1
+    |> Matrix.allIndices
+    |> Seq.tryFind (fun (row,col) -> matrix1.[row,col] <> matrix2.[row, cols-col-1])
+    |> function 
+    | Some _ -> false
+    | None -> true
+
+// let findLeftRightSymmetryAxis2 (area: Area) =
+//     let area = Area.AsChar area
+//     let rows,cols = Matrix.size area
+//     [|0..cols-1|]
+//     |> symmetryPairs
+//     |> Array.choose (fun (c1,c2) -> 
+//         haveOneTileDifferent (area[*,c1]) (area[*,c2]) 
+//         |> Option.map (fun index -> c1,c2,index))
+    
+//     |> Array.pairwise 
+//     |> Array.where (fun (c1,c2) -> area[*,c1] = area[*,c2])
+//     |> Array.tryFind (fun (c1,c2) -> 
+//         let width = Math.Min(c1+1, cols - c2)
+//         let left = area.[*, c1-width+1..c1]
+//         let right = area.[*, c2..c2+width-1]
+
+//         CheckLeftRightSymmetry left right)
+//     |> Option.map (fun point -> H point)
+        
