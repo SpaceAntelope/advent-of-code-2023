@@ -1,5 +1,6 @@
 <Project>
     <PropertyGroup>
         <UseArtifactsOutput>true</UseArtifactsOutput>
+        <TargetFramework>net9.0</TargetFramework>
     </PropertyGroup>
 </Project>
