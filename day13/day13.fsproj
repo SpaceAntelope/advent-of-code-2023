@@ -4,20 +4,18 @@
     <OutputType>Exe</OutputType>
   </PropertyGroup>
 
-  <ItemGroup>    
+  <ItemGroup>
     <None Include="input\puzzle.example">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>    
+    </None>
     <None Include="input\puzzle.input">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>    
+    </None>
     <Compile Include="Program.fs" />
   </ItemGroup>
-
-  <ItemGroup />
 
   <ItemGroup>
     <ProjectReference Include="..\common\Common.fsproj" />
   </ItemGroup>
-    
+
 </Project>
