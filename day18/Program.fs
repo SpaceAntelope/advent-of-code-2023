@@ -18,7 +18,11 @@ module Main =
                 | '2' -> Lt
                 | '3' -> Up
                 | x -> failwith $"Unknown direction character '{x}'"
-          
+
+    type Edge = {
+        Start : int64*int64
+        Stop : int64*int64
+    }
     type Instruction = {
         Direction : Dir
         Steps: int
@@ -77,15 +81,18 @@ module Main =
         data |> Array.map (fun (row,col) -> float row * size / maxRow, float col * size / maxCol )
 
 
-    let pointsToSvgPolygon (size: int) (data : (int64*int64) array) =
+    let pointsToSvgPolygon (title: string) (data : (int64*int64) array) =
         let points = 
             data 
-            |> rebasePoints size
-            |> Array.map (fun (row,col) -> sprintf "%.3f,%.3f" row col) 
+            // |> rebasePoints size
+            // |> Array.map (fun (row,col) -> sprintf "%.3f,%.3f" row col) 
+            |> Array.map (fun (row,col) -> sprintf "%d,%d" col row) 
             |> fun x -> String.Join (" ", x)
         $$"""
-        <div style="margin: 1em">
-            <svg width="{{size}}" height="{{size}}">
+        <div style="margin: 1em;border: 3px solid #CDDC39;border-radius: 1em;padding: 1em;">
+            <label>Polygon</label>
+            <label>{{title}}</label>
+            <svg>
                 <polygon 
                     points="{{points}}"
                     style="fill:lime;stroke:purple;stroke-width:1;stroke-height:1;fill-rule:evenodd;">
@@ -93,25 +100,35 @@ module Main =
         </div>
         """
     
-    let instrToSvgPath (data: (Dir*int64) array) = 
+    let instrToSvgPath (title:string) (data: (Dir*int64) array) = 
         let d = 
             data 
             |> Array.map (fun (dir,steps) -> 
                 match dir with
-                | Up -> $"V {-steps}"
-                | Dn -> $"V {steps}"
-                | Rt -> $"H {steps}"
-                | Lt -> $"H {-steps}")
+                | Up -> $"v {-steps}"
+                | Dn -> $"v {steps}"
+                | Rt -> $"h {steps}"
+                | Lt -> $"h {-steps}")
             |> String.concat " "
         $$"""
-        <div style="margin: 1em">
-            <svg width="1920" height="1080">
+        <div style="margin: 1em;border: 3px solid #CDDC39;border-radius: 1em;padding: 1em;">
+            <label>Path</label>
+            <label>{{title}}</label>
+            <svg>
                 <path 
                     d="M 0 0 {{d}}"
                     style="fill:lime;stroke:purple;stroke-width:1;stroke-height:1;fill-rule:evenodd;">
             </svg>
         </div>
         """
+
+    (*
+
+
+// Update viewBox to contain the entire path
+svgElement.setAttribute('viewBox', 
+  `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`);
+    *)
 
     // more like manhattan distance between first and last point, i.e. 0
     let size (data: (Dir*int64) array) =
@@ -150,9 +167,10 @@ module Main =
         // |> Array.iter (printfn "%A")
 
     "./input/puzzle.example" 
-    |> parse     
+    |> parse'
+    |> Array.map (fun instr -> instr.Direction, int64 instr.Steps)  
     |> pathToPoints
-    |> pointsToSvgPolygon 1000
+    |> pointsToSvgPolygon "Example, part 1"
     |> printfn "%s"
 
     "./input/puzzle.example" 
@@ -160,24 +178,67 @@ module Main =
     |> Array.map (fun instr -> instr.Direction, int64 instr.Steps)
     |> fun instr -> 
         instr  
-        |> instrToSvgPath 
+        |> instrToSvgPath "Example, part 1"
         |> printfn "%s"
-        instr
+    
+    "./input/puzzle.example" 
+    |> parse     
     |> pathToPoints
-    |> pointsToSvgPolygon 1000
+    |> pointsToSvgPolygon "Example, part 2"
     |> printfn "%s"
+
+    "./input/puzzle.example" 
+    |> parse
+    |> fun instr -> 
+        instr  
+        |> instrToSvgPath "Example part 2"
+        |> printfn "%s"
+
+        // instr
+    // |> pathToPoints
+    // |> pointsToSvgPolygon 1000
+    // |> printfn "%s"
     // |> calculateArea
     // |> Common.Assertions.shouldBe 952408144115L
 
-    "./input/puzzle.input" 
-    |> parse     
-    |> pathToPoints
-    |> pointsToSvgPolygon 1000
-    |> printfn "%s"
-
+    
     "./input/puzzle.input" 
     |> parse'
     |> Array.map (fun instr -> instr.Direction, int64 instr.Steps)  
     |> pathToPoints
-    |> pointsToSvgPolygon 1000
+    |> pointsToSvgPolygon "Input part 1"
     |> printfn "%s"
+
+    "./input/puzzle.input" 
+    |> parse'
+    |> Array.map (fun instr -> instr.Direction, int64 instr.Steps)
+    |> fun instr -> 
+        instr  
+        |> instrToSvgPath "Input part 1"
+    |> printfn "%s"
+
+    "./input/puzzle.input" 
+    |> parse     
+    |> pathToPoints
+    |> pointsToSvgPolygon "Input part 2"
+    |> printfn "%s"
+    
+    "./input/puzzle.input" 
+    |> parse
+    |> fun instr -> 
+        instr  
+        |> instrToSvgPath "Input part 2"
+    |> printfn "%s"
+
+    """
+<script>
+    const svgElements = document.querySelectorAll('svg');
+    for (const svgElement of svgElements) {
+        const path = svgElement.querySelector('path,polygon');
+        if (path) {
+            const bbox = path.getBBox();
+            svgElement.setAttribute('viewBox', `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`);
+        }
+    }
+</script>
+    """ |> printfn "%s"
