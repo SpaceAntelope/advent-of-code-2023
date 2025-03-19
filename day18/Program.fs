@@ -22,6 +22,7 @@ module Main =
     type Edge = {
         Start : int64*int64
         Stop : int64*int64
+        InnerDir: Dir
     }
     type Instruction = {
         Direction : Dir
@@ -75,11 +76,81 @@ module Main =
             points.[index] <- row + rowOffset, col + colOffset
         points
 
+    let pathToEdges (data: (Dir*int64) array) =
+        let edges = 
+            data 
+            |> Array.scan (fun (row,col) (dir,distance) -> 
+                    match dir with 
+                    | Dn -> row + distance, col
+                    | Up -> row - distance, col
+                    | Lt -> row, col - distance
+                    | Rt -> row, col + distance) (0L,0L)
+            |> Array.pairwise 
+        
+        let verticalEdges = 
+            edges 
+            |> Array.filter (fun ((r1,c1),(r2,c2)) -> c1 = c2) 
+            |> Array.map (fun ((r1,c1),(r2,c2)) -> r1,r2,c1)
+        
+        // let leftMostVerticalEdge = verticalEdges |> Array.minBy (fun (_,_,c)->c) 
+        ()
+
     let rebasePoints (size:float) (data : (int64*int64) array) =
         let maxRow = data |> Array.maxBy fst |> fst |> float
         let maxCol = data |> Array.maxBy snd |> snd |> float
         data |> Array.map (fun (row,col) -> float row * size / maxRow, float col * size / maxCol )
 
+    type Point = int64*int64
+    type SplitAreaState = { PrevRowPoints: Point array; Squares: Point array array }
+    let splitAreaToNonOverlappingSquares (data: (int64*int64) array) = 
+        let directedEdges =
+            let edges = data |> Array.pairwise //|> Array.map (fun (p1,p2) -> { Start = p1; Stop = p2; InnerDir = Dn })
+            let topRow = data |> Array.minBy fst |> fst            
+            let topHorizontalEdgeIndex= edges |> Array.findIndex (fun (p1,p2) -> topRow = fst p1 && topRow = fst p2)
+            let edgesStartingFromTopHorizontalEdge= edges.[..topHorizontalEdgeIndex-1] |> Array.append edges1.[topHorizontalEdgeIndex..]
+            let (r1,c1),(r2,c2) = edges.[topHorizontalEdgeIndex]
+            let innerDirection = 
+                if c1 < c2 then Dn else Up
+            edgesStartingFromTopHorizontalEdge
+            |> Array.skip 1
+            |> Array.scan (fun state current ->
+                let (r1,c1),(r2,c2) = current
+                match compare r1 r2, compare c1 c2, state.InnerDir with
+                | rDiff, cDiff, prevDir -> 
+                 ) { Start = (r1,c1); Stop = (r2,c2); InnerDir = innerDirection }
+
+        data
+        |> Array.groupBy fst        
+        |> Array.map (fun (key,grp)-> key, grp |> Array.sortBy snd)
+        |> Array.sortBy fst
+        |> Array.map snd
+        |> Array.fold (fun (state: SplitAreaState) currentRowPoints -> 
+                match state.PrevRowPoints with
+                | [||] -> { state with PrevRowPoints = currentRowPoints }
+                | prevRow ->
+                    let currentRowIndex = currentRowPoints |> Array.head |> fst
+                    let prevRowIndex = prevRow |> Array.head |> fst
+                    let height = currentRowIndex - prevRowIndex
+                    let squares = 
+                        prevRow 
+                        // |> Array.chunkBySize 2 
+                        |> Array.pairwise
+                        |> Array.map (fun ((r1,c1),(r2,c2)) ->                             
+                            [|r1,c1;r2,c2;currentRowIndex,c1;currentRowIndex,c2|]
+                        )
+                    { PrevRowPoints = currentRowPoints; Squares = state.Squares |> Array.append squares }
+                ) { PrevRowPoints = [||]; Squares = [||] }
+        |> _.Squares
+
+    let pointsToRect (points: Point[]) =
+        let leftCol = points |> Array.minBy snd |> snd
+        let topRow = points |> Array.minBy fst |> fst
+        let rightCol = points |> Array.maxBy snd |> snd
+        let bottomRow = points |> Array.maxBy fst |> fst
+        let height = bottomRow - topRow
+        let width = rightCol - leftCol
+
+        $"""<rect width="{width}" height="{height}" x="{leftCol}" y="{topRow}" fill="rgba(0,0,180,0.25)" stroke="fuchsia" style="stroke-width: 0.25; stroke-height: 0.25" />"""
 
     let pointsToSvgPolygon (title: string) (data : (int64*int64) array) =
         let points = 
@@ -88,14 +159,20 @@ module Main =
             // |> Array.map (fun (row,col) -> sprintf "%.3f,%.3f" row col) 
             |> Array.map (fun (row,col) -> sprintf "%d,%d" col row) 
             |> fun x -> String.Join (" ", x)
+
+        let squares = splitAreaToNonOverlappingSquares data
+        let rects = squares |> Array.map pointsToRect |> String.concat "\n                "
         $$"""
-        <div style="margin: 1em;border: 3px solid #CDDC39;border-radius: 1em;padding: 1em;">
+        <div style="margin: 1em;border: 3px solid #CDDC39;border-radius: 1em;padding: 1em; width: 75%;">
             <label>Polygon</label>
             <label>{{title}}</label>
+            <label>squares: {{squares.Length}}</label>
             <svg>
                 <polygon 
                     points="{{points}}"
-                    style="fill:lime;stroke:purple;stroke-width:1;stroke-height:1;fill-rule:evenodd;">
+                    style="fill:lime;stroke:purple;fill-rule:evenodd;"/>
+                <!-- {{squares.Length}} rects below -->
+                {{rects}}
             </svg>
         </div>
         """
@@ -122,13 +199,6 @@ module Main =
         </div>
         """
 
-    (*
-
-
-// Update viewBox to contain the entire path
-svgElement.setAttribute('viewBox', 
-  `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`);
-    *)
 
     // more like manhattan distance between first and last point, i.e. 0
     let size (data: (Dir*int64) array) =
@@ -140,6 +210,7 @@ svgElement.setAttribute('viewBox',
             | Lt -> rows, cols - dist
             | Rt -> rows, cols + dist) (0L,0L) data
 
+    
     let calculateArea (data: (int64*int64) array) = 
         data
         |> Array.groupBy fst        
@@ -173,13 +244,13 @@ svgElement.setAttribute('viewBox',
     |> pointsToSvgPolygon "Example, part 1"
     |> printfn "%s"
 
-    "./input/puzzle.example" 
-    |> parse'
-    |> Array.map (fun instr -> instr.Direction, int64 instr.Steps)
-    |> fun instr -> 
-        instr  
-        |> instrToSvgPath "Example, part 1"
-        |> printfn "%s"
+    // "./input/puzzle.example" 
+    // |> parse'
+    // |> Array.map (fun instr -> instr.Direction, int64 instr.Steps)
+    // |> fun instr -> 
+    //     instr  
+    //     |> instrToSvgPath "Example, part 1"
+    //     |> printfn "%s"
     
     "./input/puzzle.example" 
     |> parse     
@@ -187,12 +258,12 @@ svgElement.setAttribute('viewBox',
     |> pointsToSvgPolygon "Example, part 2"
     |> printfn "%s"
 
-    "./input/puzzle.example" 
-    |> parse
-    |> fun instr -> 
-        instr  
-        |> instrToSvgPath "Example part 2"
-        |> printfn "%s"
+    // "./input/puzzle.example" 
+    // |> parse
+    // |> fun instr -> 
+    //     instr  
+    //     |> instrToSvgPath "Example part 2"
+    //     |> printfn "%s"
 
         // instr
     // |> pathToPoints
@@ -209,13 +280,13 @@ svgElement.setAttribute('viewBox',
     |> pointsToSvgPolygon "Input part 1"
     |> printfn "%s"
 
-    "./input/puzzle.input" 
-    |> parse'
-    |> Array.map (fun instr -> instr.Direction, int64 instr.Steps)
-    |> fun instr -> 
-        instr  
-        |> instrToSvgPath "Input part 1"
-    |> printfn "%s"
+    // "./input/puzzle.input" 
+    // |> parse'
+    // |> Array.map (fun instr -> instr.Direction, int64 instr.Steps)
+    // |> fun instr -> 
+    //     instr  
+    //     |> instrToSvgPath "Input part 1"
+    // |> printfn "%s"
 
     "./input/puzzle.input" 
     |> parse     
@@ -223,12 +294,12 @@ svgElement.setAttribute('viewBox',
     |> pointsToSvgPolygon "Input part 2"
     |> printfn "%s"
     
-    "./input/puzzle.input" 
-    |> parse
-    |> fun instr -> 
-        instr  
-        |> instrToSvgPath "Input part 2"
-    |> printfn "%s"
+    // "./input/puzzle.input" 
+    // |> parse
+    // |> fun instr -> 
+    //     instr  
+    //     |> instrToSvgPath "Input part 2"
+    // |> printfn "%s"
 
     """
 <script>
