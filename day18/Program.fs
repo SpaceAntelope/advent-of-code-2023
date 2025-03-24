@@ -102,30 +102,81 @@ module Main =
 
     type Point = int64*int64
     type SplitAreaState = { PrevRowPoints: Point array; Squares: Point array array }
+
+   
     let splitAreaToNonOverlappingSquares (data: (int64*int64) array) = 
-        let directedEdges =
-            let edges = data |> Array.pairwise //|> Array.map (fun (p1,p2) -> { Start = p1; Stop = p2; InnerDir = Dn })
-            let topRow = data |> Array.minBy fst |> fst            
-            let topHorizontalEdgeIndex= edges |> Array.findIndex (fun (p1,p2) -> topRow = fst p1 && topRow = fst p2)
-            let edgesStartingFromTopHorizontalEdge= edges.[..topHorizontalEdgeIndex-1] |> Array.append edges1.[topHorizontalEdgeIndex..]
-            let (r1,c1),(r2,c2) = edges.[topHorizontalEdgeIndex]
-            let innerDirection = 
-                if c1 < c2 then Dn else Up
-            edgesStartingFromTopHorizontalEdge
-            |> Array.skip 1
-            |> Array.scan (fun state current ->
-                let (r1,c1),(r2,c2) = current
-                match compare r1 r2, compare c1 c2, state.InnerDir with
-                | rDiff, cDiff, prevDir -> 
-                 ) { Start = (r1,c1); Stop = (r2,c2); InnerDir = innerDirection }
+        // let directedEdges =
+        //     let edges = data |> Array.pairwise //|> Array.map (fun (p1,p2) -> { Start = p1; Stop = p2; InnerDir = Dn })
+        //     let topRow = data |> Array.minBy fst |> fst            
+        //     let topHorizontalEdgeIndex= edges |> Array.findIndex (fun (p1,p2) -> topRow = fst p1 && topRow = fst p2)
+        //     let edgesStartingFromTopHorizontalEdge= edges.[..topHorizontalEdgeIndex-1] |> Array.append edges1.[topHorizontalEdgeIndex..]
+        //     let (r1,c1),(r2,c2) = edges.[topHorizontalEdgeIndex]
+        //     let innerDirection = 
+        //         if c1 < c2 then Dn else Up
+        //     edgesStartingFromTopHorizontalEdge
+        //     |> Array.skip 1
+        //     |> Array.scan (fun state current ->
+        //         let (r1,c1),(r2,c2) = current
+        //         match compare r1 r2, compare c1 c2, state.InnerDir with
+        //         | rDiff, cDiff, prevDir -> 
+        //          ) { Start = (r1,c1); Stop = (r2,c2); InnerDir = innerDirection }
+        
+        // let flip (x,y) = y,x
+        let edges = data |> Array.pairwise // |> Array.collect (fun e -> [|e;flip e|] )
+
+        let isWithinEdge (((r1,c1): Point), ((r2,c2): Point)) = 
+            let minRow = Math.Min(r1,r2)
+            let minCol = Math.Min(c1,c2)
+            let maxRow = Math.Max(r1,r2)
+            let maxCol = Math.Max(c1,c2)            
+            match compare r1 r2, compare c1 c2 with
+            | 0, 0 -> failwith $"It's not and edge if both points are the same ({(r1,c1)} {(r2,c2)})"
+            | 0, _ -> edges |> Array.tryFind (fun ((y1,x1),(y2,x2)) -> r1 = y1 && minCol >= Math.Min(c1,c2) && maxCol <= Math.Max(c1,c2))
+            | _, 0 -> edges |> Array.tryFind (fun ((y1,x1),(y2,x2)) -> c1 = x1 && minRow >= Math.Min(y1,y2) && maxRow <= Math.Max (y1,y2))             
+            | _, _ -> failwith $"No diagonal edges allowed ({(r1,c1)} {(r2,c2)})"
+            |> fun x -> 
+                if x.IsSome 
+                then printfn "<div style='margin-left: 5px'>%A %A € %A</div>" (r1,c1) (r2,c2) x                
+                x.IsSome
+        
+        let printPointTable (data : Point array) = 
+            let maxRow = data |> Array.maxBy fst |> fst |> int |> (+) 1
+            let maxCol = data |> Array.maxBy snd |> snd |> int |> (+) 1
+            let map = Array2D.init maxRow maxCol (fun row col -> if data |> Array.contains (row,col) then Some (row,col) else None)
+            printfn "<table style='border: 1px solid black'>"
+            for row in 0..maxRow-1 do
+                printfn "<tr>"
+                for col in 0..maxCol-1 do
+                    if map.[row,col].IsSome then
+                        printfn "<td style='background-color: blue; color: white; font-weight: bold'>%d %d</td>" row col
+                    else 
+                        printfn "<td style='border: 1px solid black'>%s %s</td>" "." "."
+                printfn "</tr>"
+            printfn "</table>"
+
+        // printPointTable data
 
         data
+        |> fun data ->
+            if data.[0] = data.[^0]
+            then data |> Array.skip 1
+            else data
         |> Array.groupBy fst        
         |> Array.map (fun (key,grp)-> key, grp |> Array.sortBy snd)
         |> Array.sortBy fst
         |> Array.map snd
+        |> Common.General.tee "Groupd poitns"
         |> Array.fold (fun (state: SplitAreaState) currentRowPoints -> 
-                match state.PrevRowPoints with
+                printfn "<br/>"
+                [
+                    $"Squares: {state.Squares.Length}"
+                    $"Row: {currentRowPoints |> Array.head |> fst}"
+                    $"Prev Points: %A{state.PrevRowPoints}"
+                    $"Curr Points: %A{currentRowPoints}"
+                ] |> List.iter(printfn "<div>%s</div>")
+                
+                let points = state.PrevRowPoints // |> Array.append currentRowPoints |> Array.sortBy snd |> Array.distinct
+                match points with
                 | [||] -> { state with PrevRowPoints = currentRowPoints }
                 | prevRow ->
                     let currentRowIndex = currentRowPoints |> Array.head |> fst
@@ -133,12 +184,35 @@ module Main =
                     let height = currentRowIndex - prevRowIndex
                     let squares = 
                         prevRow 
-                        // |> Array.chunkBySize 2 
                         |> Array.pairwise
-                        |> Array.map (fun ((r1,c1),(r2,c2)) ->                             
-                            [|r1,c1;r2,c2;currentRowIndex,c1;currentRowIndex,c2|]
+                        |> Array.choose (fun ((r1,c1),(r2,c2)) ->
+                            // printfn "%A" <| (r1,c1,r2,c2)
+                            let square = 
+                                match compare c1 c2 with
+                                | 0 -> failwith $"It's not and edge if both points are the same ({(r1,c1)} {(r2,c2)})"
+                                | 1 ->  [|prevRowIndex,c2;prevRowIndex,c1;currentRowIndex,c1;currentRowIndex,c2|]
+                                | -1 -> [|prevRowIndex,c1;prevRowIndex,c2;currentRowIndex,c2;currentRowIndex,c1|]
+                                | x -> failwith $"Should happen {x}"
+                            
+
+                            match (square |> Array.pairwise |> Array.forall isWithinEdge) && (isWithinEdge (square.[3],square.[0])) with
+                            | true -> Some square
+                            | false -> 
+                                printfn "<div style='font-weight: bold'>Rejected: %A</div>" square
+                                None
                         )
-                    { PrevRowPoints = currentRowPoints; Squares = state.Squares |> Array.append squares }
+                    
+                    printfn "<ol>"
+                    for square in squares do printfn $"<li>%A{square}</li>"
+                    printfn "</ol>"
+                    let points = 
+                        squares 
+                        |> Array.concat 
+                        |> Array.filter (fun (row, col) -> row = currentRowIndex) 
+                        |> Array.append currentRowPoints
+                        |> Array.distinct
+                        |> Array.sortBy snd
+                    { PrevRowPoints = points; Squares = squares |> Array.append state.Squares }
                 ) { PrevRowPoints = [||]; Squares = [||] }
         |> _.Squares
 
@@ -150,7 +224,23 @@ module Main =
         let height = bottomRow - topRow
         let width = rightCol - leftCol
 
-        $"""<rect width="{width}" height="{height}" x="{leftCol}" y="{topRow}" fill="rgba(0,0,180,0.25)" stroke="fuchsia" style="stroke-width: 0.25; stroke-height: 0.25" />"""
+        $"""
+            <rect width="{width}" height="{height}" x="{leftCol}" y="{topRow}" fill="rgba(0,0,180,0.5)" stroke="fuchsia" style="stroke-width: 0.25; stroke-height: 0.25" />
+        """
+    let pointsToRectWithText (text:string) (points: Point[]) =
+        let leftCol = points |> Array.minBy snd |> snd
+        let topRow = points |> Array.minBy fst |> fst
+        let rightCol = points |> Array.maxBy snd |> snd
+        let bottomRow = points |> Array.maxBy fst |> fst
+        let height = bottomRow - topRow
+        let width = rightCol - leftCol
+
+        $"""
+            <g>
+                <rect width="{width}" height="{height}" x="{leftCol}" y="{topRow}" fill="rgba(0,0,180,0.5)" stroke="fuchsia" style="stroke-width: 0.25; stroke-height: 0.25" />
+                <text x="{leftCol}" y="{topRow + 1L}" font-size="1">{text}</text>
+            </g>
+        """
 
     let pointsToSvgPolygon (title: string) (data : (int64*int64) array) =
         let points = 
@@ -159,9 +249,11 @@ module Main =
             // |> Array.map (fun (row,col) -> sprintf "%.3f,%.3f" row col) 
             |> Array.map (fun (row,col) -> sprintf "%d,%d" col row) 
             |> fun x -> String.Join (" ", x)
-
         let squares = splitAreaToNonOverlappingSquares data
-        let rects = squares |> Array.map pointsToRect |> String.concat "\n                "
+        let rects = 
+            squares 
+            |> Array.mapi (fun i square-> pointsToRectWithText ((i+1).ToString()) square)
+            |> String.concat "\n                "
         $$"""
         <div style="margin: 1em;border: 3px solid #CDDC39;border-radius: 1em;padding: 1em; width: 75%;">
             <label>Polygon</label>
@@ -170,7 +262,7 @@ module Main =
             <svg>
                 <polygon 
                     points="{{points}}"
-                    style="fill:lime;stroke:purple;fill-rule:evenodd;"/>
+                    style="fill:lime;stroke:purple"/>
                 <!-- {{squares.Length}} rects below -->
                 {{rects}}
             </svg>
@@ -213,7 +305,7 @@ module Main =
     
     let calculateArea (data: (int64*int64) array) = 
         data
-        |> Array.groupBy fst        
+        |> Array.groupBy fst
         |> Array.map (fun (key,grp)-> key, grp |> Array.sortBy snd)
         |> Array.sortBy fst
         |> Array.map snd
@@ -252,54 +344,54 @@ module Main =
     //     |> instrToSvgPath "Example, part 1"
     //     |> printfn "%s"
     
-    "./input/puzzle.example" 
-    |> parse     
-    |> pathToPoints
-    |> pointsToSvgPolygon "Example, part 2"
-    |> printfn "%s"
-
     // "./input/puzzle.example" 
-    // |> parse
-    // |> fun instr -> 
-    //     instr  
-    //     |> instrToSvgPath "Example part 2"
-    //     |> printfn "%s"
-
-        // instr
+    // |> parse     
     // |> pathToPoints
-    // |> pointsToSvgPolygon 1000
+    // |> pointsToSvgPolygon "Example, part 2"
     // |> printfn "%s"
-    // |> calculateArea
-    // |> Common.Assertions.shouldBe 952408144115L
+
+    // // "./input/puzzle.example" 
+    // // |> parse
+    // // |> fun instr -> 
+    // //     instr  
+    // //     |> instrToSvgPath "Example part 2"
+    // //     |> printfn "%s"
+
+    //     // instr
+    // // |> pathToPoints
+    // // |> pointsToSvgPolygon 1000
+    // // |> printfn "%s"
+    // // |> calculateArea
+    // // |> Common.Assertions.shouldBe 952408144115L
 
     
-    "./input/puzzle.input" 
-    |> parse'
-    |> Array.map (fun instr -> instr.Direction, int64 instr.Steps)  
-    |> pathToPoints
-    |> pointsToSvgPolygon "Input part 1"
-    |> printfn "%s"
-
     // "./input/puzzle.input" 
     // |> parse'
-    // |> Array.map (fun instr -> instr.Direction, int64 instr.Steps)
-    // |> fun instr -> 
-    //     instr  
-    //     |> instrToSvgPath "Input part 1"
+    // |> Array.map (fun instr -> instr.Direction, int64 instr.Steps)  
+    // |> pathToPoints
+    // |> pointsToSvgPolygon "Input part 1"
     // |> printfn "%s"
 
-    "./input/puzzle.input" 
-    |> parse     
-    |> pathToPoints
-    |> pointsToSvgPolygon "Input part 2"
-    |> printfn "%s"
-    
+    // // "./input/puzzle.input" 
+    // // |> parse'
+    // // |> Array.map (fun instr -> instr.Direction, int64 instr.Steps)
+    // // |> fun instr -> 
+    // //     instr  
+    // //     |> instrToSvgPath "Input part 1"
+    // // |> printfn "%s"
+
     // "./input/puzzle.input" 
-    // |> parse
-    // |> fun instr -> 
-    //     instr  
-    //     |> instrToSvgPath "Input part 2"
+    // |> parse     
+    // |> pathToPoints
+    // |> pointsToSvgPolygon "Input part 2"
     // |> printfn "%s"
+    
+    // // "./input/puzzle.input" 
+    // // |> parse
+    // // |> fun instr -> 
+    // //     instr  
+    // //     |> instrToSvgPath "Input part 2"
+    // // |> printfn "%s"
 
     """
 <script>

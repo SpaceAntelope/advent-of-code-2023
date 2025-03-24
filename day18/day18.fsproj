@@ -3,6 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <!-- <ImplicitUsings>enable</ImplicitUsings> -->
+    <LangVersion>preview</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,5 +19,5 @@
   <ItemGroup>
     <ProjectReference Include="..\common\Common.fsproj" />
   </ItemGroup>
-  
+
 </Project>
