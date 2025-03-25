@@ -19,11 +19,11 @@ module Main =
                 | '3' -> Up
                 | x -> failwith $"Unknown direction character '{x}'"
 
-    type Edge = {
-        Start : int64*int64
-        Stop : int64*int64
-        InnerDir: Dir
-    }
+    // type Edge = {
+    //     Start : int64*int64
+    //     Stop : int64*int64
+    //     InnerDir: Dir
+    // }
     type Instruction = {
         Direction : Dir
         Steps: int
@@ -65,7 +65,7 @@ module Main =
                     | Dn -> row + distance, col
                     | Up -> row - distance, col
                     | Lt -> row, col - distance
-                    | Rt -> row, col + distance) (0L,0L)
+                    | Rt -> row, col + distance) (1L,1L)
 
         let minRow = points |> Array.minBy fst |> fst
         let minCol =  points |> Array.minBy snd |> snd
@@ -102,9 +102,68 @@ module Main =
 
     type Point = int64*int64
     type SplitAreaState = { PrevRowPoints: Point array; Squares: Point array array }
+    type Vertex = { row: int64; col: int64}
+    type SvgRect = { TopLeft: Vertex; Width: int64; Height: int64 }
+    type Edge = { Start: Vertex; Stop: Vertex } with override x.ToString() = x.ToString().Replace('\n',' ')
 
-   
     let splitAreaToNonOverlappingSquares (data: (int64*int64) array) = 
+        let edges = 
+            // [|data |> Array.head |]
+            // |> Array.append data
+            data
+            |> Array.pairwise
+            |> Common.General.tee2 "Edges"
+
+        let verticalEdges = 
+            edges 
+            |> Array.filter (fun ((r1,c1),(r2,c2)) -> c1 = c2)
+            |> Array.map (fun ((r1,c1),(r2,c2))-> 
+                match compare r1 r2 with
+                | 1 -> { Start = { row = r2; col = c2}; Stop = { row = r1; col = c1} }
+                | _ -> { Start = { row = r1; col = c1}; Stop = { row = r2; col = c2} })
+            |> Array.sortBy (fun edge -> edge.Start.row)
+            |> Common.General.tee2 "Vertical Edges"
+
+        let expandedVerticalEdges =
+            let rowsWithPoints = data |> Array.map fst |> Array.distinct |> Array.sort |> Common.General.tee2 "Rows with points"
+            verticalEdges
+            |> Array.collect (fun edge -> 
+                rowsWithPoints 
+                |> Array.filter (fun row -> 
+                    let result = edge.Start.row <= row && edge.Stop.row >= row
+                    // printfn "Row: %d Edge: %A Result: %b" row edge result
+                    result
+                    )
+                |> Array.pairwise 
+                |> Array.map (fun (r1,r2) -> { Start = { row = r1; col = edge.Start.col }; Stop = { row = r2; col = edge.Start.col } })
+            )
+            |> Common.General.tee2 "Expanded Vertical Edges"
+        
+        // let sortedData = 
+        //     data
+        //     |> fun data ->
+        //         if data.[0] = data.[^0]
+        //         then data |> Array.skip 1
+        //         else data
+        //     |> Array.groupBy fst        
+        //     |> Array.map (fun (key,grp)-> key, grp |> Array.sortBy snd)
+        //     |> Array.sortBy fst
+        //     |> Array.map snd
+                
+        expandedVerticalEdges
+        |> Array.groupBy(fun edge -> edge.Start.row)
+        |> Array.map snd
+        |> Array.collect (fun edges -> 
+            edges 
+            |> Array.sortBy (fun e -> e.Start.col)
+            |> Array.pairwise
+            |> Array.indexed
+            |> Array.filter (fun (i,_) -> i % 2 = 0)
+            |> Array.map snd
+            |> Array.map (fun (e1,e2) -> { TopLeft = e1.Start; Width = e2.Stop.col - e1.Start.col; Height = e2.Stop.row - e1.Start.row  })
+        )                     
+
+    let splitAreaToNonOverlappingSquares' (data: (int64*int64) array) = 
         // let directedEdges =
         //     let edges = data |> Array.pairwise //|> Array.map (fun (p1,p2) -> { Start = p1; Stop = p2; InnerDir = Dn })
         //     let topRow = data |> Array.minBy fst |> fst            
@@ -165,7 +224,7 @@ module Main =
         |> Array.map (fun (key,grp)-> key, grp |> Array.sortBy snd)
         |> Array.sortBy fst
         |> Array.map snd
-        |> Common.General.tee "Groupd poitns"
+        |> Common.General.tee2 "Groupd poitns"
         |> Array.fold (fun (state: SplitAreaState) currentRowPoints -> 
                 printfn "<br/>"
                 [
@@ -242,6 +301,15 @@ module Main =
             </g>
         """
 
+    let svgRectHtml (text:string) (rect: SvgRect) = 
+         $"""
+            <g>
+                <!-- <rect width="{rect.Width}" height="{rect.Height}" x="{rect.TopLeft.col}" y="{rect.TopLeft.row}" fill="rgba(0,0,180,0.5)" stroke="fuchsia" style="stroke-width: 0.25; stroke-height: 0.25" /> -->
+                <rect width="{rect.Width}" height="{rect.Height}" x="{rect.TopLeft.col}" y="{rect.TopLeft.row}" fill="rgba(0,0,180,0.5)" stroke="fuchsia" style="stroke-width: 0; stroke-height: 0" />
+                <text x="{rect.TopLeft.col}" y="{rect.TopLeft.row + 1L}" font-size="1">{text}</text>
+            </g>
+        """
+
     let pointsToSvgPolygon (title: string) (data : (int64*int64) array) =
         let points = 
             data 
@@ -252,7 +320,7 @@ module Main =
         let squares = splitAreaToNonOverlappingSquares data
         let rects = 
             squares 
-            |> Array.mapi (fun i square-> pointsToRectWithText ((i+1).ToString()) square)
+            |> Array.mapi (fun i square-> svgRectHtml ((i+1).ToString()) square)
             |> String.concat "\n                "
         $$"""
         <div style="margin: 1em;border: 3px solid #CDDC39;border-radius: 1em;padding: 1em; width: 75%;">
@@ -328,80 +396,118 @@ module Main =
                 ) ([||],0L)
         |> snd
         // |> Array.iter (printfn "%A")
+    let html() = 
+        "./input/puzzle.example" 
+        |> parse'
+        |> Array.map (fun instr -> instr.Direction, int64 instr.Steps)  
+        |> pathToPoints
+        |> pointsToSvgPolygon "Example, part 1"
+        |> printfn "%s"
 
+        // "./input/puzzle.example" 
+        // |> parse'
+        // |> Array.map (fun instr -> instr.Direction, int64 instr.Steps)
+        // |> fun instr -> 
+        //     instr  
+        //     |> instrToSvgPath "Example, part 1"
+        //     |> printfn "%s"
+        
+        "./input/puzzle.example" 
+        |> parse     
+        |> pathToPoints
+        |> pointsToSvgPolygon "Example, part 2"
+        |> printfn "%s"
+
+        // // "./input/puzzle.example" 
+        // // |> parse
+        // // |> fun instr -> 
+        // //     instr  
+        // //     |> instrToSvgPath "Example part 2"
+        // //     |> printfn "%s"
+
+        //     // instr
+        // // |> pathToPoints
+        // // |> pointsToSvgPolygon 1000
+        // // |> printfn "%s"
+        // // |> calculateArea
+        // // |> Common.Assertions.shouldBe 952408144115L
+
+        
+        "./input/puzzle.input" 
+        |> parse'
+        |> Array.map (fun instr -> instr.Direction, int64 instr.Steps)  
+        |> pathToPoints
+        |> pointsToSvgPolygon "Input part 1"
+        |> printfn "%s"
+
+        // // "./input/puzzle.input" 
+        // // |> parse'
+        // // |> Array.map (fun instr -> instr.Direction, int64 instr.Steps)
+        // // |> fun instr -> 
+        // //     instr  
+        // //     |> instrToSvgPath "Input part 1"
+        // // |> printfn "%s"
+
+        "./input/puzzle.input" 
+        |> parse     
+        |> pathToPoints
+        |> pointsToSvgPolygon "Input part 2"
+        |> printfn "%s"
+        
+        // // "./input/puzzle.input" 
+        // // |> parse
+        // // |> fun instr -> 
+        // //     instr  
+        // //     |> instrToSvgPath "Input part 2"
+        // // |> printfn "%s"
+
+        """
+    <script>
+        const svgElements = document.querySelectorAll('svg');
+        for (const svgElement of svgElements) {
+            const path = svgElement.querySelector('path,polygon');
+            if (path) {
+                const bbox = path.getBBox();
+                svgElement.setAttribute('viewBox', `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`);
+            }
+        }
+    </script>
+        """ |> printfn "%s"
+
+    // html()
+
+    let pathLength (points: (int64*int64) array) = 
+        points 
+        |> Array.pairwise
+        |> Array.sumBy Common.General.manhattan64
+
+    let areafromPoints (points: (int64*int64) array) =                
+        points
+        |> Common.General.tee2 "Points"
+        |> fun points -> 
+            printfn "Trench length: %d" (pathLength points)
+
+            points
+            |> splitAreaToNonOverlappingSquares
+            |> Common.General.tee2 "Squares"        
+            |> Array.sumBy (fun rect -> rect.Width * rect.Height)
+            |> (+) ((pathLength points)/2L + 1L)
+    
     "./input/puzzle.example" 
     |> parse'
     |> Array.map (fun instr -> instr.Direction, int64 instr.Steps)  
     |> pathToPoints
-    |> pointsToSvgPolygon "Example, part 1"
-    |> printfn "%s"
+    |> areafromPoints
+    |> Common.Assertions.shouldBe 62
 
-    // "./input/puzzle.example" 
-    // |> parse'
-    // |> Array.map (fun instr -> instr.Direction, int64 instr.Steps)
-    // |> fun instr -> 
-    //     instr  
-    //     |> instrToSvgPath "Example, part 1"
-    //     |> printfn "%s"
-    
-    // "./input/puzzle.example" 
-    // |> parse     
-    // |> pathToPoints
-    // |> pointsToSvgPolygon "Example, part 2"
-    // |> printfn "%s"
+    "./input/puzzle.example" 
+    |> parse     
+    |> pathToPoints
+    |> areafromPoints
+    |> Common.Assertions.shouldBe 952408144115L
 
-    // // "./input/puzzle.example" 
-    // // |> parse
-    // // |> fun instr -> 
-    // //     instr  
-    // //     |> instrToSvgPath "Example part 2"
-    // //     |> printfn "%s"
-
-    //     // instr
-    // // |> pathToPoints
-    // // |> pointsToSvgPolygon 1000
-    // // |> printfn "%s"
-    // // |> calculateArea
-    // // |> Common.Assertions.shouldBe 952408144115L
-
-    
-    // "./input/puzzle.input" 
-    // |> parse'
-    // |> Array.map (fun instr -> instr.Direction, int64 instr.Steps)  
-    // |> pathToPoints
-    // |> pointsToSvgPolygon "Input part 1"
-    // |> printfn "%s"
-
-    // // "./input/puzzle.input" 
-    // // |> parse'
-    // // |> Array.map (fun instr -> instr.Direction, int64 instr.Steps)
-    // // |> fun instr -> 
-    // //     instr  
-    // //     |> instrToSvgPath "Input part 1"
-    // // |> printfn "%s"
-
-    // "./input/puzzle.input" 
-    // |> parse     
-    // |> pathToPoints
-    // |> pointsToSvgPolygon "Input part 2"
-    // |> printfn "%s"
-    
-    // // "./input/puzzle.input" 
-    // // |> parse
-    // // |> fun instr -> 
-    // //     instr  
-    // //     |> instrToSvgPath "Input part 2"
-    // // |> printfn "%s"
-
-    """
-<script>
-    const svgElements = document.querySelectorAll('svg');
-    for (const svgElement of svgElements) {
-        const path = svgElement.querySelector('path,polygon');
-        if (path) {
-            const bbox = path.getBBox();
-            svgElement.setAttribute('viewBox', `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`);
-        }
-    }
-</script>
-    """ |> printfn "%s"
+    "./input/puzzle.input" 
+    |> parse     
+    |> pathToPoints
+    |> areafromPoints
+    |> printfn "The lagoon can hold %d cubic meters of lava" 
