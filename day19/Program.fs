@@ -1,6 +1,6 @@
 ﻿namespace Day19
 
-module Part1 =
+module Main =
     open System
     open System.IO
     open System.Text.RegularExpressions
@@ -42,11 +42,6 @@ module Part1 =
             match x.Operator with
             | Lt -> ratingValue < x.Value
             | Gt -> ratingValue > x.Value
-            // |> function 
-            // | true -> Some x.Target
-            // | false -> None
-
-
 
         static member FromString (str: string) = 
                 let matches = Regex.Match(str, @"(\w)([<>])(\d+):(\w+)")
@@ -95,37 +90,41 @@ module Part1 =
 
         ratings, workflows
 
-    let applyWorkflows (workflows: Workflow[]) (part: MachinePart)=
-        let index = workflows |> Array.map (fun wf -> wf.Key, wf) |> readOnlyDict
+    let Part1() = 
 
-        let rec apply (wf : Workflow) = 
-            wf.Rules 
-            |> Array.tryFind _.Evaluate(part)
-            |> function
-            | Some rule -> rule.Target
-            | None -> wf.LastRule 
-            |> function
-            | Accept -> Accepted part
-            | Reject -> Rejected part
-            | Key key -> apply (index.[key])
+        let applyWorkflows (workflows: Workflow[]) (part: MachinePart)=
+            let index = workflows |> Array.map (fun wf -> wf.Key, wf) |> readOnlyDict
 
-        apply index.["in"]
-    
-    let sumAcceptedRatings (path:string) =
-        path
-        |> parse 
-        |> fun (ratings, workflows) ->
-                ratings
-                |> Array.map (applyWorkflows workflows)
-        |> Array.sumBy (fun pp -> 
-            match pp with
-            | Accepted part -> part.TotalRating()
-            | _ -> 0L)
+            let rec apply (wf : Workflow) = 
+                wf.Rules 
+                |> Array.tryFind _.Evaluate(part)
+                |> function
+                | Some rule -> rule.Target
+                | None -> wf.LastRule 
+                |> function
+                | Accept -> Accepted part
+                | Reject -> Rejected part
+                | Key key -> apply (index.[key])
+
+            apply index.["in"]
         
-    "./input/puzzle.example"
-    |> sumAcceptedRatings
-    |> Common.Assertions.shouldBe 19114
-    
-    "./input/puzzle.input"
-    |> sumAcceptedRatings
-    |> printfn "If you add together all of the rating numbers for all of the parts that ultimately get accepted you get %d"
+        let sumAcceptedRatings (path:string) =
+            path
+            |> parse 
+            |> fun (ratings, workflows) ->
+                    ratings
+                    |> Array.map (applyWorkflows workflows)
+            |> Array.sumBy (fun pp -> 
+                match pp with
+                | Accepted part -> part.TotalRating()
+                | _ -> 0L)
+            
+        "./input/puzzle.example"
+        |> sumAcceptedRatings
+        |> Common.Assertions.shouldBe 19114
+        
+        "./input/puzzle.input"
+        |> sumAcceptedRatings
+        |> printfn "If you add together all of the rating numbers for all of the parts that ultimately get accepted you get %d"
+
+    Part1()
