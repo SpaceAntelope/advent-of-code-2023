@@ -6,7 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="input\puzzle.example">
+    <None Include="input\puzzle.example-1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="input\puzzle.example-2">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="input\puzzle.input">
@@ -19,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\common\Common.fsproj" />
+    <ProjectReference Include="..\..\common\Common.fsproj" />
   </ItemGroup>
 
 </Project>
