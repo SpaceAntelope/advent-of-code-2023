@@ -16,7 +16,10 @@
 
   <ItemGroup>
     <Compile Include="Properties/AssemblyInfo.fs" />
+    <Compile Include="Common.fs" />
     <Compile Include="ExampleTests.fs" />
+    <Compile Include="FlipFlopTests.fs" />
+    <Compile Include="ConjunctionTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

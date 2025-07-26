@@ -6,6 +6,8 @@ module ParseTests =
     open Day20.Model
     open System.Text
 
+    let dontLog = fun (msg:string) -> ()
+
     let getConjunctionIndex (source: ModuleBase seq) =
         source
         |> Seq.filter (fun x -> x :? Conjunction) 
@@ -94,11 +96,11 @@ inv --High-> a
         
         let actualLog = StringBuilder()
         
-        Day20.Part1.processPulses (Some actualLog) network
+        Day20.Part1.processPulses (fun msg -> actualLog.AppendLine(msg) |> ignore) network
 
         let actual = Day20.Part1.evaluate network
 
-        printfn "Aψtual\n%O" actualLog
+        printfn "Actual\n%O" actualLog
         
         Assert.Equal(expectedLog, actualLog.ToString())
         Assert.Equal(expectedHi, actual.Hi)
@@ -110,7 +112,7 @@ inv --High-> a
     let processNetwork1000Times(path: string, expectedEvaluation: int) =
         let network, _ = Day20.Part1.parse path
         
-        for _ in 1..1000 do Day20.Part1.processPulses None network
+        for _ in 1..1000 do Day20.Part1.processPulses dontLog network
 
         let actual = Day20.Part1.evaluate network
 

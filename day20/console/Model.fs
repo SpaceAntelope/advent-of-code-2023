@@ -8,8 +8,8 @@ module Model =
     open System.Text
 
     type Pulse = High | Low
-    type FFState = On | Off 
-        with static member Invert (state: FFState) = 
+    type FlipState = On | Off 
+        with static member Invert (state: FlipState) = 
                 match state with On -> Off | Off -> On
 
     [<AbstractClass>]
@@ -48,7 +48,7 @@ module Model =
 
         override x.SendLowPulseFrom(name:string) = 
             x.IncreaseLowPulseCount()
-            x.State <- FFState.Invert x.State
+            x.State <- FlipState.Invert x.State
             x.PulsePending <- true
         
         override x.Output() =
@@ -57,22 +57,27 @@ module Model =
                 | On -> High
                 | Off -> Low
 
-    type Conjunction(name: string, destinationModules: string[]) = 
+    type Conjunction (name: string, destinationModules: string[], state: Dictionary<string,Pulse>) = 
         inherit ModuleBase(name, destinationModules)
-
-        let state = Dictionary<string, Pulse>()
-        member x.State with get() = state
+        
+        new(name:string, destinationModules: string[]) = 
+            Conjunction(
+                name, 
+                destinationModules,
+                Dictionary<string, Pulse>())
+            
+        member val State = state with get, set
 
         member x.RegisterInput(name:string) = state.Add(name, Low)
         
         override x.SendHighPulseFrom(name: string) =
-            x.PulsePending <- true
             x.IncreaseHighPulseCount()
+            x.PulsePending <- true
             state.[name] <- High
             
         override x.SendLowPulseFrom(name: string) =
-            x.PulsePending <- true
             x.IncreaseLowPulseCount()
+            x.PulsePending <- true
             state.[name] <- Low
 
         override x.Output() =
@@ -124,8 +129,8 @@ module Model =
     type Button() = 
         inherit ModuleBase("button", [|"broadcaster"|])
         do base.PulsePending <- true
-        override x.SendHighPulseFrom(name: string) = ()
-        override x.SendLowPulseFrom(name: string) = ()
+        override x.SendHighPulseFrom(name: string) = failwith $"You can't high pulse a button, {name}."
+        override x.SendLowPulseFrom(name: string) = failwith $"You can't low pulse a button, {name}."
         override x.Output() = 
             x.PulsePending <- false
             Low

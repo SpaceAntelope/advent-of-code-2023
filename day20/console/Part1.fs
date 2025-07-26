@@ -62,27 +62,22 @@ module Part1 =
 
         {| Hi = hiPulseCount; Lo = loPulseCount; Evaluation = hiPulseCount * loPulseCount |}
 
-    let processPulses (log: StringBuilder option) (modules: ModuleBase[])  =
+    let processPulses (log: string -> unit) (modules: ModuleBase[])  =
         let network =
             modules
             |> Array.map (fun x -> x.Name, x)
             |> readOnlyDict
     
-        let writeLog (msg: string) = 
-            match log with
-            | Some log -> log.AppendLine(msg) |> ignore
-            | None -> ()
-            
         let mutable step = 0
 
         let rec proc (changedModules: ModuleBase[] ) =
             if changedModules.Length > 0 
             then 
                 step <- step + 1
-                writeLog $"\r\nStep: {step}"
+                log $"\r\nStep: {step}"
                 changedModules
                 |> Array.collect _.UpdateDestinations(network)
-                |> Array.iter writeLog
+                |> Array.iter log
 
                 modules 
                 |> Array.filter _.PulsePending
