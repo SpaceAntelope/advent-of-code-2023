@@ -11,7 +11,9 @@ module Program =
         let inputPath =
             Path.Join(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "./input/puzzle.input")
 
-        let network, _ = Day20.Part1.parse inputPath
+        let network, index = Day20.Part1.parse inputPath
+        let printNetowrkState() = network |> Array.iter (printfn "%O")
+        
         let iterations = 1000
         let sb = StringBuilder()
         let log : string -> unit = 
@@ -20,11 +22,19 @@ module Program =
             else
                 fun msg -> ()
 
-        for i in 1 .. 1000 do
+        let edges = ResizeArray<PulsingEdge[]>()
 
-            Day20.Part1.processPulses log network
+        for i in 1 .. iterations do
+            let result = Day20.Part1.processPulses' network
+            edges.AddRange(result)
 
-            if sb.Length > 0 then printfn "%O" sb
+            if iterations < 10
+            then
+                printfn $"\n-- Button press #{i} --"
+                result 
+                |> Seq.iteri (fun step edges -> 
+                    printfn "\nStep: %d.%d" i (step+1)
+                    edges |> Array.iter (fun e -> printfn "%O :: %O" e index.[e.Target]))
 
 
         let evaluation = Day20.Part1.evaluate network
@@ -33,6 +43,8 @@ module Program =
             "If you multiply the total number of low pulses sent by the total number of high pulses sent you get %A"
             evaluation
 
+        // let counts = edges |> Seq.countBy _.Pulse |> Array.ofSeq
+        // printfn "%A %d" counts (snd counts.[0]* snd counts.[1])
 
     [<EntryPoint>]
     let main argv =

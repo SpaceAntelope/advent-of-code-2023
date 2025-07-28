@@ -20,6 +20,7 @@
     <Compile Include="ExampleTests.fs" />
     <Compile Include="FlipFlopTests.fs" />
     <Compile Include="ConjunctionTests.fs" />
+    <Compile Include="GeneralTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

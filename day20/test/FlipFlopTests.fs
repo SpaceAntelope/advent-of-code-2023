@@ -25,29 +25,29 @@ module FilpFlopTests =
         
         Assert.Equal(ff.State , Off)
 
-
+    let TruthTableData = 
+        let data = TheoryData<FlipState, Pulse, FlipState>()
+        data.Add(Off, Low, On)
+        data.Add(Off, High, Off)
+        data.Add(On, Low, Off)
+        data.Add(On, High, On)
+        data
 
     [<Theory>]
-    [<InlineData("Off","High","Off")>]
-    [<InlineData("Off","Low", "On")>]
-    [<InlineData("On","High","On")>]
-    [<InlineData("On","Low", "Off")>]
-    let ``flip flop with on state should switch off when low pulsed`` (initialState: string) (input: string) (state: string) =
-        let inputPulse = pulseParse input
-        let initState = stateParse initialState
-        let expected = stateParse state
-
+    [<MemberData(nameof(TruthTableData))>]
+    let ``flip flop with on state should switch off when low pulsed`` (initialState: FlipState) (input: Pulse) (expectedState: FlipState) =
+        
         let ff = FlipFlop("ff",[||])
-        ff.State <- initState
+        ff.State <- initialState
 
         // Arrange
-        match inputPulse with 
+        match input with 
         | High -> ff.SendHighPulseFrom("x")
         | Low -> ff.SendLowPulseFrom("x")
 
         let actual = ff.State
 
-        Assert.Equal(expected,actual)
+        Assert.Equal(expectedState,actual)
 
     [<Theory>]
     [<InlineData(3, "On")>]

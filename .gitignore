@@ -7,3 +7,4 @@ bin
 # *.fsproj
 output.txt
 .vs
+*.dot

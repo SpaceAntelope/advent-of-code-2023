@@ -23,7 +23,7 @@ module ConjunctionTests =
         | High -> con.SendHighPulseFrom("x")
         | Low -> con.SendLowPulseFrom("x")
 
-        printfn "%A" con.State
+        // printfn "%A" con.State
         let actual = con.Output()
         Assert.Equal(expectedOutput, actual)
 
@@ -67,6 +67,6 @@ module ConjunctionTests =
             | High -> con.SendHighPulseFrom(incoming.Key)
             | Low -> con.SendLowPulseFrom(incoming.Key)
 
-        printfn "%A" con.State
+        // printfn "%A" con.State
         let actual = con.Output()
         Assert.Equal(expectedOutput, actual)

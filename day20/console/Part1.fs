@@ -77,7 +77,7 @@ module Part1 =
                 log $"\r\nStep: {step}"
                 changedModules
                 |> Array.collect _.UpdateDestinations(network)
-                |> Array.iter log
+                |> Array.iter (fun x -> log <| x.ToString())
 
                 modules 
                 |> Array.filter _.PulsePending
@@ -88,3 +88,32 @@ module Part1 =
         |> proc 
 
         network.["button"].PulsePending <- true
+    
+    let processPulses' (modules: ModuleBase[])  =
+        let network =
+            modules
+            |> Array.map (fun x -> x.Name, x)
+            |> readOnlyDict
+    
+        let mutable step = 0
+        let result = ResizeArray<PulsingEdge[]>()
+        
+        let rec proc (changedModules: ModuleBase[] ) =
+            if changedModules.Length > 0 
+            then 
+                step <- step + 1
+                changedModules
+                |> Array.collect _.UpdateDestinations(network)
+                |> result.Add
+
+                modules 
+                |> Array.filter _.PulsePending
+                |> proc
+                        
+        modules
+        |> Array.filter _.PulsePending
+        |> proc 
+
+        network.["button"].PulsePending <- true
+
+        result //|> Array.ofSeq |> Array.collect id
